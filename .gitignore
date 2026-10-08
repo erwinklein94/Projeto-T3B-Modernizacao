@@ -1,0 +1,9 @@
+.private/
+node_modules/
+dist/
+.env*
+!.env.example
+playwright-report/
+test-results/
+__pycache__/
+scripts/debug-local.mjs

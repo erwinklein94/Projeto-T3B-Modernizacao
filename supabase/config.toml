@@ -1,0 +1,4 @@
+project_id = "ixzvvyslbsuwnyhrxqwf"
+[functions.t3b-create-user]
+# Gateway JWT verification plus auth.getUser and editor-profile authorization inside the function.
+verify_jwt = true
