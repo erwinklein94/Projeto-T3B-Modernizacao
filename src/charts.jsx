@@ -18,6 +18,11 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
   select.current = onSelect;
   useEffect(() => {
     const chart = echarts.init(el.current);
+    const ink = dark ? "#dce8ee" : "#526574";
+    const axisTheme = (axis) => ({
+      ...axis,
+      axisLabel: { ...axis.axisLabel, color: ink },
+    });
     chart.setOption({
       animation: false,
       color: palette,
@@ -28,6 +33,12 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
         valueFormatter: (v) => fmt(v),
       },
       ...option,
+      legend: { ...option.legend, textStyle: { color: ink } },
+      ...(option.xAxis ? { xAxis: axisTheme(option.xAxis) } : {}),
+      ...(option.yAxis ? { yAxis: axisTheme(option.yAxis) } : {}),
+      series: option.series.map((s) => s.type === "pie"
+        ? { ...s, label: { ...s.label, color: ink, textBorderWidth: 0 } }
+        : s),
     });
     chart.on("click", (event) => {
       if (event.componentType === "series") select.current?.(
