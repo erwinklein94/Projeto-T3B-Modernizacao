@@ -687,6 +687,7 @@ function App() {
       </div>
       <DashboardCharts
         summary={summary}
+        filterText={filterDescription(filter)}
         dark={dark}
         focusSupplier={focusSupplier}
       />
