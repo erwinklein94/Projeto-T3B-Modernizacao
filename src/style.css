@@ -169,27 +169,14 @@ small {
   color: white;
   font-size: 17px;
 }
-.wordmark {
-  font-family: Verdana, sans-serif;
-  font-size: 37px;
-  font-weight: bold;
-  letter-spacing: -3px;
-}
-.wordmark span {
-  color: #7fe06c;
-  font-size: 48px;
-  vertical-align: -3px;
-  margin-left: 1px;
-}
+.brand > span { font-weight: 700; line-height: 1.35; }
 .brand small {
   font-size: 7px;
   letter-spacing: 1px;
 }
-.brand-divider {
-  height: 33px;
-  width: 1px;
-  background: #ffffff44;
-}
+.sidebar-closed aside { display: none; }
+.sidebar-closed .workspace { margin-left: 0; width: 100%; }
+.menu-toggle { flex: none; }
 aside {
   width: 238px;
   position: fixed;
@@ -748,6 +735,7 @@ pre {
   height: 58px;
   justify-content: flex-end;
 }
+.presentation .menu-toggle { display: none; }
 .login {
   display: grid;
   grid-template-columns: 1.1fr 1fr;
@@ -875,9 +863,6 @@ pre {
     gap: 10px;
     font-size: 14px;
   }
-  .wordmark {
-    font-size: 31px;
-  }
   .brand small {
     font-size: 6px;
   }
@@ -929,12 +914,6 @@ pre {
   }
   .brand {
     font-size: 13px;
-  }
-  .wordmark {
-    font-size: 25px;
-  }
-  .wordmark span {
-    font-size: 32px;
   }
   .project-label,
   .sidebar-bottom {
@@ -1056,17 +1035,11 @@ pre {
   aside .brand {
     gap: 7px;
   }
-  aside .brand-divider {
-    display: none;
-  }
   aside .brand small {
     font-size: 5px;
     letter-spacing: 0;
   }
   aside .brand {
     font-size: 11px;
-  }
-  aside .wordmark {
-    font-size: 29px;
   }
 }

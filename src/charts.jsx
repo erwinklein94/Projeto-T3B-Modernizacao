@@ -172,9 +172,19 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
                 name: "Recebidos",
                 data: s.months.map((x) => x[1]),
                 itemStyle: { color: "#32A6E6", borderRadius: [4, 4, 0, 0] },
+                label: {
+                  show: true,
+                  position: "top",
+                  distance: 7,
+                  color: dark ? "#dce8ee" : "#003865",
+                  fontSize: 11,
+                  fontWeight: "bold",
+                  formatter: ({ value }) => fmt(value, 2),
+                },
               },
             ],
           ),
+          grid: { left: 55, right: 25, top: 65, bottom: 85 },
         }}
       />
       <Chart
@@ -261,7 +271,7 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
         filterText={filterText}
         height={380}
         option={{
-          grid: { left: 160, right: 45, top: 15, bottom: 30 },
+          grid: { left: 160, right: 85, top: 15, bottom: 30 },
           xAxis: { type: "value" },
           yAxis: {
             type: "category",
@@ -286,6 +296,14 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
               data: comp.map((x) => x[1]),
               itemStyle: { color: "#1E9F7F", borderRadius: [0, 4, 4, 0] },
               barMaxWidth: 23,
+              label: {
+                show: true,
+                position: "right",
+                distance: 5,
+                color: dark ? "#dce8ee" : "#003865",
+                fontSize: 10,
+                formatter: ({ value }) => fmt(value, 2),
+              },
             },
           ],
         }}

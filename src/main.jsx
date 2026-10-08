@@ -24,6 +24,7 @@ import {
   Trash2,
   X,
   LoaderCircle,
+  Menu,
 } from "lucide-react";
 import definitions from "./definitions.json";
 import {
@@ -91,13 +92,9 @@ function Button({ children, icon: Icon, ...p }) {
 }
 function Brand() {
   return (
-    <div className="brand">
-      <span className="wordmark">
-        rumo<span>›</span>
-      </span>
-      <div className="brand-divider" />
+    <div className="brand" aria-label="Projeto T3B Modernização">
       <span>
-        T3B
+        Projeto T3B
         <br />
         <small>MODERNIZAÇÃO</small>
       </span>
@@ -483,6 +480,7 @@ function App() {
     [logs, setLogs] = useState([]),
     [logSearch, setLogSearch] = useState(""),
     [full, setFull] = useState(false),
+    [sidebarOpen, setSidebarOpen] = useState(true),
     [exporting, setExporting] = useState(false),
     [removing, setRemoving] = useState(null);
   const canWrite = profile && profile.role !== "consulta",
@@ -757,8 +755,8 @@ function App() {
     </>
   );
   return (
-    <div className={`app ${full ? "presentation" : ""}`}>
-      <aside>
+    <div className={`app ${full ? "presentation" : ""} ${sidebarOpen ? "" : "sidebar-closed"}`}>
+      <aside id="main-sidebar">
         <Brand />
         <div className="project-label">GESTÃO DE DORMENTES</div>
         <nav>
@@ -795,6 +793,14 @@ function App() {
       </aside>
       <div className="workspace">
         <header className="topbar">
+          <Button
+            className="menu-toggle"
+            icon={Menu}
+            aria-label={sidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"}
+            aria-controls="main-sidebar"
+            aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen((open) => !open)}
+          />
           <div className="breadcrumb">
             Projeto T3B <ChevronRight size={13} />
             <strong>{labels[page]}</strong>
