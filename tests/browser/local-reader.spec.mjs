@@ -2,7 +2,11 @@ import { test, expect } from "@playwright/test";
 import { fixture, filePayload } from "../workbook-fixture.mjs";
 
 const records = (page) => page.getByRole("button", { name: "Registros", exact: true });
-const upload = (page, payload) => page.getByLabel("Selecionar planilha Excel").setInputFiles(payload);
+const insert = (page) => page.getByRole("button", { name: "Inserir dados", exact: true });
+const upload = async (page, payload) => {
+  await insert(page).click();
+  await page.getByLabel("Controle Dormentes Volume Espécies Jales", { exact: true }).and(page.locator("input[type=file]")).setInputFiles(payload);
+};
 const received = (page) => page.locator(".kpi").filter({ hasText: "Recebidos" }).locator("strong");
 
 test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem enviar dados", async ({ page, context }) => {
@@ -12,11 +16,14 @@ test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem envia
   await page.goto("./");
   await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
   await expect(page.locator("input[type=password]")).toHaveCount(0);
-  await expect(page.locator("nav button")).toHaveCount(2);
+  await expect(page.locator("nav button")).toHaveCount(5);
   await records(page).click();
   await upload(page, await filePayload());
   await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  await records(page).click();
   await expect(page.getByRole("cell", { name: "00123", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Importar planilha Excel" })).toHaveCount(0);
+  await expect(page.locator("input[type=file]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Novo registro" })).toHaveCount(0);
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect(received(page)).toHaveText("10,5");
@@ -33,12 +40,14 @@ test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem envia
   await upload(page, await filePayload(fixture(20), "atualizada.xlsx"));
   await expect(page.getByText("Planilha: atualizada.xlsx", { exact: true })).toBeVisible();
   await expect(received(otherTab)).toHaveText("20");
+  await records(page).click();
   await expect(page.locator(".table-title")).toContainText("1 registros");
   await upload(page, { name: "invalida.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("inválido") });
   await expect(page.getByRole("alert")).toContainText("Não foi possível ler");
   await expect(page.getByText("Planilha: atualizada.xlsx", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Limpar dados locais", exact: true }).click();
+  await page.getByRole("button", { name: "Limpar dados de Controle Dormentes Volume Espécies Jales", exact: true }).click();
   await page.getByRole("button", { name: "Confirmar limpeza" }).click();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
   await expect(received(otherTab)).toHaveText("0");
   await page.reload();

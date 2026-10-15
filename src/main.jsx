@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -17,12 +17,16 @@ import {
   AlertTriangle,
   TrainFront,
   ChevronRight,
-  Trash2,
+  CalendarRange,
+  Leaf,
   Menu,
 } from "lucide-react";
 import definitions from "./definitions.json";
-import { readDataset, saveDataset, clearDataset, STORAGE_KEY } from "./storage.mjs";
+import { readDataset, saveDataset, clearDataset, storageKey } from "./storage.mjs";
 import { importExcelFile } from "./import-excel.js";
+import { SOURCES, sourceById } from "./sources.mjs";
+import { ImportPage, SourceStatus } from "./import-page";
+import { WeeklyDashboard, TaxonomyDashboard } from "./supplement-dashboards";
 import {
   emptyFilters,
   fields,
@@ -39,7 +43,7 @@ import {
 import { DashboardCharts } from "./charts";
 import { exportExcel, exportPDF } from "./exports";
 import "./style.css";
-const labels = { dashboard: "Dashboard", records: "Registros" };
+const labels = { dashboard: "Dashboard", records: "Registros", insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title };
 function Button({ children, icon: Icon, ...p }) {
   return (
     <button {...p}>
@@ -143,13 +147,17 @@ function Filters({ value: f, onChange, records, kind, dashboard = false }) {
 }
 function App() {
   const [initial] = useState(() => {
-    try { return { data: readDataset(), error: "" }; }
-    catch (error) { return { data: null, error: error.message }; }
+    const datasets = {}, errors = [];
+    for (const source of SOURCES) {
+      try { datasets[source.id] = readDataset(undefined, source.id); }
+      catch (error) { datasets[source.id] = null; errors.push(`${source.title}: ${error.message}`); }
+    }
+    return { datasets, error: errors.join(" ") };
   });
-  const [dataset, setDataset] = useState(initial.data),
+  const [datasets, setDatasets] = useState(initial.datasets),
     [page, setPage] = useState("dashboard"),
     [dark, setDark] = useState(false),
-    [loading, setLoading] = useState(false),
+    [busySource, setBusySource] = useState(""),
     [message, setMessage] = useState(initial.error),
     [filter, setFilter] = useState({ ...emptyFilters }),
     [regFilter, setRegFilter] = useState({ ...emptyFilters }),
@@ -159,38 +167,42 @@ function App() {
     [full, setFull] = useState(false),
     [sidebarOpen, setSidebarOpen] = useState(true),
     [exporting, setExporting] = useState(false),
-    [removing, setRemoving] = useState(false);
-  const fileInput = useRef(null);
+    [removing, setRemoving] = useState("");
+  const dataset = datasets.operations;
+  const loading = Boolean(busySource);
   const records = dataset?.records || [];
   const currentDefinitions = dataset?.definitions || definitions;
   const defById = Object.fromEntries(currentDefinitions.map((d) => [d.id, d]));
-  const applyDataset = (data) => {
-    setDataset(data);
+  const applyDataset = (source, data) => {
+    setDatasets((current) => ({ ...current, [source]: data }));
+    if (source !== "operations") return;
     setFilter({ ...emptyFilters });
     setRegFilter({ ...emptyFilters });
     setPagination(0);
     setFocusSupplier("");
   };
-  const importFile = async (event) => {
+  const importFile = async (event, source) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
-    setLoading(true);
+    setBusySource(source);
     setMessage("");
     try {
-      const data = await importExcelFile(file);
-      saveDataset(data);
-      applyDataset(data);
-      setMessage(`Planilha importada: ${data.records.length} registros. Os dados anteriores foram substituídos.`);
+      const data = await importExcelFile(file, source);
+      saveDataset(data, undefined, source);
+      applyDataset(source, data);
+      setMessage(`Planilha importada: ${data.records.length} registros. Os dados anteriores deste campo foram substituídos.`);
     } catch (error) {
       setMessage(error.message);
-    } finally { setLoading(false); }
+    } finally { setBusySource(""); }
   };
   useEffect(() => {
     const sync = (event) => {
-      if (event.key !== STORAGE_KEY && event.key !== null) return;
-      try { applyDataset(readDataset()); }
-      catch (error) { applyDataset(null); setMessage(error.message); }
+      for (const source of SOURCES) {
+        if (event.key !== storageKey(source.id) && event.key !== null) continue;
+        try { applyDataset(source.id, readDataset(undefined, source.id)); }
+        catch (error) { applyDataset(source.id, null); setMessage(`${source.title}: ${error.message}`); }
+      }
     };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
@@ -384,6 +396,9 @@ function App() {
           {[
             [LayoutDashboard, "dashboard"],
             [Rows3, "records"],
+            [CalendarRange, "weekly"],
+            [Leaf, "taxonomy"],
+            [Upload, "insert"],
           ].map(([Icon, p]) => (
             <button
               className={page === p ? "active" : ""}
@@ -391,7 +406,7 @@ function App() {
               onClick={() => navigate(p)}
             >
               <Icon size={20} />
-              {labels[p]}
+              <span>{labels[p]}</span>
               {page === p && <ChevronRight size={16} />}
             </button>
           ))}
@@ -433,7 +448,7 @@ function App() {
                   if (document.fullscreenElement)
                     await document.exitFullscreen();
                   else {
-                    setPage("dashboard");
+                    if (!["dashboard", "weekly", "taxonomy"].includes(page)) setPage("dashboard");
                     await document.documentElement.requestFullscreen();
                   }
                 } catch (e) {
@@ -448,24 +463,18 @@ function App() {
           </div>
         </header>
         <main>
-          {!dataset && (
+          {!dataset && ["dashboard", "records"].includes(page) && (
             <div className="notice empty-import">
               <div><strong>Nenhuma planilha importada</strong>
-              <p>Importe sua planilha Excel em Registros para preencher os dados e o dashboard. Os dados ficam salvos somente neste navegador.</p></div>
-              {page !== "records" && <Button icon={Upload} onClick={() => navigate("records")}>Ir para Registros</Button>}
+              <p>Importe sua planilha de controle em Inserir dados para preencher os dados e o dashboard. Os dados ficam salvos somente neste navegador.</p></div>
+              <Button icon={Upload} onClick={() => navigate("insert")}>Ir para Inserir dados</Button>
             </div>
           )}
           {loading && <div role="status" className="notice">Lendo e validando a planilha… Aguarde a conclusão da importação.</div>}
-          {dataset && (
-            <div className="notice import-status">
-              <strong>Planilha: {dataset.fileName}</strong>
-              <span>{dataset.records.length} registros · Importada em {new Date(dataset.importedAt).toLocaleString("pt-BR")}</span>
-              <span>Dados salvos somente neste navegador. Uma nova importação substitui toda a base local.</span>
-              {dataset.warnings.length > 0 && <details><summary>Conferir avisos da planilha ({dataset.warnings.length})</summary>
-                <ul>{dataset.warnings.map((warning, i) => <li key={i}>{warning}</li>)}</ul>
-              </details>}
-            </div>
-          )}
+          {["dashboard", "records"].includes(page) && <SourceStatus dataset={dataset} />}
+          {page === "insert" && <ImportPage datasets={datasets} busySource={busySource} onImport={importFile} onClear={setRemoving} onNavigate={navigate} />}
+          {page === "weekly" && <WeeklyDashboard key={`weekly:${datasets.weekly?.importedAt || "empty"}`} dataset={datasets.weekly} dark={dark} onInsert={() => navigate("insert")} />}
+          {page === "taxonomy" && <TaxonomyDashboard key={`taxonomy:${datasets.taxonomy?.importedAt || "empty"}`} dataset={datasets.taxonomy} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "dashboard" && dashboard}
           {page === "records" && (
             <>
@@ -473,19 +482,13 @@ function App() {
                 <div>
                   <span className="eyebrow">CONTROLE OPERACIONAL</span>
                   <h1>Registros</h1>
-                  <p>Importe a planilha mais atualizada para consultar os dados da operação.</p>
+                  <p>Consulte os dados da planilha de controle importada em Inserir dados.</p>
                 </div>
                 <div className="actions">
-                  <input ref={fileInput} type="file" accept=".xlsx" aria-label="Selecionar planilha Excel" hidden onChange={importFile} disabled={loading} />
-                  <Button icon={Upload} className="primary" disabled={loading} onClick={() => fileInput.current?.click()}>
-                    {loading ? "Importando…" : "Importar planilha Excel"}
-                  </Button>
                   <Button icon={Download} disabled={exporting || loading || !rows.length}
                     onClick={() => runExport(() => exportExcel(def, rows))}>Exportar Excel</Button>
-                  <Button icon={Trash2} disabled={!dataset || loading} onClick={() => setRemoving(true)}>Limpar dados locais</Button>
                 </div>
               </div>
-              <p className="import-help">Selecione um arquivo .xlsx no mesmo padrão de abas e colunas. Para atualizar os valores, altere o Excel e importe novamente. O arquivo é lido no seu dispositivo.</p>
               <div className="tabs" role="tablist">
                 {currentDefinitions
                   .filter((d) => d.id !== "parametros")
@@ -600,17 +603,17 @@ function App() {
           <section className="modal small" role="dialog" aria-modal="true" aria-labelledby="clear-title">
             <h2 id="clear-title">Limpar dados deste navegador?</h2>
             <p>
-              O dashboard e os registros ficarão vazios. Você poderá importar a planilha novamente para restaurar os dados.
+              Os dados de {sourceById[removing].title} serão removidos deste navegador. As outras planilhas serão preservadas. Você poderá importar este arquivo novamente em Inserir dados.
             </p>
             <div className="actions">
-              <Button onClick={() => setRemoving(false)}>Cancelar</Button>
+              <Button onClick={() => setRemoving("")}>Cancelar</Button>
               <Button
                 className="danger"
                 onClick={async () => {
                   try {
-                    clearDataset();
-                    applyDataset(null);
-                    setRemoving(false);
+                    clearDataset(undefined, removing);
+                    applyDataset(removing, null);
+                    setRemoving("");
                     setMessage("Dados locais removidos.");
                   } catch (e) {
                     setMessage(e.message);

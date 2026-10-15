@@ -1,20 +1,20 @@
 # Projeto T3B · Modernização
 
-Leitor local de planilhas de controle de dormentes. O site tem apenas Dashboard e Registros, sem login, contas, perfis ou conexão com banco de dados.
+Leitor local de três planilhas, com página Inserir dados, Registros e três dashboards. Sem login, contas, perfis ou conexão com banco de dados.
 
 ## Usar
 
-1. Abra **Registros → Importar planilha Excel**.
-2. Selecione a planilha `.xlsx` mais atualizada, com as abas e colunas no padrão original.
-3. Consulte os registros, os filtros e os indicadores do Dashboard.
+1. Abra **Inserir dados** no menu lateral.
+2. No campo correspondente, selecione a planilha `.xlsx` mais atualizada, com as abas e colunas no padrão original.
+3. Consulte Registros e Dashboard para o controle de dormentes ou abra os dashboards **Controle Semanal Recebimentos por Fornecedor** e **Catálogo Taxonômico Espécies Jales**.
 
-A importação substitui integralmente a base anterior. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
+A importação substitui integralmente apenas a base daquele campo, preservando as outras duas. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
 
 Os dados são processados no dispositivo e persistidos somente no `localStorage` deste site, neste navegador. Recarregar a página mantém a última importação. Outro dispositivo, navegador ou perfil começa vazio. Abas abertas no mesmo navegador acompanham a substituição ou limpeza dos dados. O arquivo Excel não é enviado a nenhum servidor.
 
-Sem importação, o site exibe somente a estrutura e os estados vazios. **Limpar dados locais** remove a base importada; limpar o armazenamento do navegador tem o mesmo efeito. Não há cópia de segurança ou sincronização remota. Falhas de leitura, validação ou gravação preservam a base anterior.
+Sem importação, o site exibe somente a estrutura e os estados vazios. **Limpar dados locais** em cada campo remove somente aquela base; limpar o armazenamento do navegador remove todas. Não há cópia de segurança ou sincronização remota. Falhas de leitura, validação ou gravação preservam a base anterior. A planilha operacional já importada na versão anterior do site continua disponível.
 
-## Padrão da planilha
+## Padrão da planilha operacional
 
 Abas obrigatórias: `Parametros`, `Recebimentos`, `Movimentacoes`, `Danificados`, `Devolucoes_Danificados`, `Conciliacao`, `Consumo_Final` e `Transferencias`.
 
@@ -30,6 +30,14 @@ Abas opcionais: `Danif.`, `Recebimento Semanal` e `Propriedades da Madeira`. Aba
 - Apurações e resumos semanais são referências independentes e não são somados aos indicadores.
 
 Exportações de consulta para Excel e PDF, detalhes dos gráficos, apresentação e temas continuam disponíveis.
+
+## Novas planilhas e dashboards
+
+**Controle Semanal Recebimentos por Fornecedor:** aba `Recebimento Semanal`, com `Semana`, `Pandolfi`, `Granoski`, `Três Guri`, `Madebel` e `TOTAL`. O painel mostra quantidades por semana e fornecedor, participação, indicadores e tabela de consulta, com filtros de semana e fornecedor. Os totais são recalculados pelas colunas dos fornecedores, sem incluir a linha TOTAL. Divergências com o total salvo geram avisos. Este controle é independente do saldo operacional.
+
+**Catálogo Taxonômico Espécies Jales:** aba `Espécies`, com nome científico, nome popular, família, gênero, distribuição, nome aceito, outros nomes populares e observações. O painel apresenta contagens por família e gênero e a consulta integral dos textos, com filtros e busca. A aba opcional `Fontes e notas` é preservada para consulta. Os agrupamentos refletem os registros importados, sem corrigir ou validar a nomenclatura taxonômica.
+
+Os nomes dos dois campos de importação são os mesmos dos respectivos dashboards. Cada base usa uma chave independente no `localStorage`. Nenhum arquivo real é incluído no código, nos testes ou na publicação.
 
 ## Desenvolvimento e publicação
 

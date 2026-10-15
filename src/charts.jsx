@@ -57,7 +57,7 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
   }, [option, dark]);
   return <div ref={el} style={{ height }} role="img" aria-label={title} />;
 }
-export function Chart({ title, subtitle, option, height = 300, dark = false, filterText }) {
+export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", note = "Quantidades em unidades, preservando as frações do histórico. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
   const [detail, setDetail] = useState(null);
   const dialog = useRef();
   const opener = useRef();
@@ -119,12 +119,12 @@ export function Chart({ title, subtitle, option, height = 300, dark = false, fil
             </div>
             <div className="chart-detail-table">
               <table>
-                <thead><tr><th>Categoria</th>{columns.map((name, i) => <React.Fragment key={i}><th>{name} (un.)</th><th>% do total de {name}</th></React.Fragment>)}</tr></thead>
+                <thead><tr><th>Categoria</th>{columns.map((name, i) => <React.Fragment key={i}><th>{name} ({unit})</th><th>% do total de {name}</th></React.Fragment>)}</tr></thead>
                 <tbody>{visible.map((row) => <tr key={row.label}><th scope="row">{row.label}</th>{row.values.map((value, i) => <React.Fragment key={i}><td>{fmt(value, 4)}</td><td>{totals[i] > 0 && value >= 0 ? `${fmt(value / totals[i] * 100)}%` : "—"}</td></React.Fragment>)}</tr>)}</tbody>
               </table>
               {!rows.length && <p>Não há dados para os filtros selecionados.</p>}
             </div>
-            <p className="chart-detail-note">Quantidades em unidades, preservando as frações do histórico. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos.</p>
+            <p className="chart-detail-note">{note}</p>
             {title === "Recebimentos por mês" && <p className="chart-detail-note">Recebimentos sem data válida não entram na distribuição mensal; por isso, o total deste gráfico pode diferir do indicador geral.</p>}
           </div>
         </dialog>

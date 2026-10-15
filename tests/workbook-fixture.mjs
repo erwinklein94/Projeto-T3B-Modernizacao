@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import definitions from "../src/definitions.json" with { type: "json" };
+import { sourceById } from "../src/sources.mjs";
 
 export function fixture(quantity = 10.5) {
   const workbook = new ExcelJS.Workbook();
@@ -21,4 +22,28 @@ export function fixture(quantity = 10.5) {
 
 export async function filePayload(workbook = fixture(), name = "controle.xlsx") {
   return { name, mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: Buffer.from(await workbook.xlsx.writeBuffer()) };
+}
+
+export function weeklyFixture(quantity = 10.5) {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sourceById.weekly.sheet);
+  sheet.getCell("A1").value = "RECEBIMENTO SEMANAL DE DORMENTES POR FORNECEDOR";
+  sheet.getRow(3).values = sourceById.weekly.headers;
+  sheet.addRow(["01/06 a 06/06/2026", quantity, 2.25, 0, 0, { formula: "SUM(B4:E4)", result: quantity + 2.25 }]);
+  sheet.addRow(["08/06 a 13/06/2026", 0, 0, 3, 0, 3]);
+  sheet.addRow(["TOTAL ", quantity, 2.25, 3, 0, quantity + 5.25]);
+  return workbook;
+}
+
+export function taxonomyFixture() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sourceById.taxonomy.sheet);
+  sheet.addRow(sourceById.taxonomy.headers);
+  sheet.addRow(["Espécie exemplo A", "Madeira A", "Família A", "Gênero A", "Região Norte", "Nome A", "Apelido A", "Observação de origem"]);
+  sheet.addRow(["Espécie exemplo B", "Madeira B", "Família A", "Gênero A", "Região Sul", "Nome B", null, null]);
+  sheet.addRow(["Espécie exemplo C", "Madeira C", "Família B", "Gênero B", "Região Sul", "Nome C", null, "Outra observação"]);
+  const notes = workbook.addWorksheet("Fontes e notas");
+  notes.addRow(["Item", "Descrição"]);
+  notes.addRow(["Fonte", "Catálogo de exemplo para testes"]);
+  return workbook;
 }

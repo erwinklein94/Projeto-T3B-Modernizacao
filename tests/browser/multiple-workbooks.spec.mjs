@@ -1,0 +1,85 @@
+import { test, expect } from "@playwright/test";
+import { filePayload, fixture, weeklyFixture, taxonomyFixture } from "../workbook-fixture.mjs";
+import { sourceById } from "../../src/sources.mjs";
+
+const nav = (page, name) => page.getByRole("button", { name, exact: true });
+const metric = (page, label) => page.locator(".kpi").filter({ has: page.locator("div", { hasText: label }) }).locator("strong");
+async function upload(page, source, workbook, name) {
+  await nav(page, "Inserir dados").click();
+  await page.getByLabel(sourceById[source].title, { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(workbook, name));
+  await expect(page.getByText(`Planilha: ${name}`, { exact: true })).toBeVisible();
+}
+
+test("Importa três bases independentes, filtra dashboards e substitui ou limpa somente a planilha escolhida", async ({ page, context }) => {
+  const errors = [], external = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("request", (request) => { if (!request.url().startsWith("http://127.0.0.1:") && !request.url().startsWith("blob:")) external.push(request.url()); });
+  await page.goto("./");
+  await upload(page, "weekly", weeklyFixture(), "semanal.xlsx");
+  await upload(page, "taxonomy", taxonomyFixture(), "catalogo.xlsx");
+  await upload(page, "operations", fixture(), "controle.xlsx");
+  await expect(page.locator(".import-card")).toHaveCount(3);
+  for (const source of ["weekly", "taxonomy"]) {
+    await expect(page.getByRole("heading", { name: sourceById[source].title, exact: true })).toBeVisible();
+  }
+  await nav(page, sourceById.weekly.title).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  await page.getByLabel("Fornecedor", { exact: true }).selectOption("Pandolfi");
+  await expect(metric(page, "Recebidos no período")).toHaveText("10,5");
+  await page.getByLabel("Semana", { exact: true }).selectOption("08/06 a 13/06/2026");
+  await expect(metric(page, "Recebidos no período")).toHaveText("0");
+  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  const otherTab = await context.newPage();
+  await otherTab.goto("./");
+  await nav(otherTab, sourceById.weekly.title).click();
+  await upload(page, "weekly", weeklyFixture(20), "nova-semanal.xlsx");
+  await expect(metric(otherTab, "Recebidos no período")).toHaveText("25,25");
+  await nav(page, sourceById.taxonomy.title).click();
+  await expect(page.getByRole("heading", { name: sourceById.taxonomy.title, exact: true })).toBeVisible();
+  await expect(metric(page, "Registros de espécies")).toHaveText("3");
+  await page.getByLabel("Família", { exact: true }).selectOption("Família A");
+  await expect(metric(page, "Registros de espécies")).toHaveText("2");
+  await page.getByLabel("Buscar no catálogo").fill("regiao norte");
+  await expect(metric(page, "Registros de espécies")).toHaveText("1");
+  await page.getByRole("button", { name: "Ampliar Registros por família", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Registros (registros)");
+  await page.getByRole("button", { name: "Fechar detalhes do gráfico" }).click();
+  await page.getByText("Fontes e notas da planilha", { exact: true }).click();
+  await expect(page.getByText("Catálogo de exemplo para testes", { exact: true })).toBeVisible();
+  await nav(page, "Inserir dados").click();
+  await page.getByLabel(sourceById.weekly.title, { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(taxonomyFixture(), "arquivo-errado.xlsx"));
+  await expect(page.getByRole("alert")).toContainText("aba obrigatória");
+  await expect(page.getByText("Planilha: nova-semanal.xlsx", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: `Limpar dados de ${sourceById.weekly.title}`, exact: true }).click();
+  await page.getByRole("button", { name: "Confirmar limpeza" }).click();
+  await expect(metric(otherTab, "Recebidos no período")).toHaveText("0");
+  await page.reload();
+  await expect(metric(page, "Recebidos")).toHaveText("10,5");
+  await nav(page, sourceById.taxonomy.title).click();
+  await expect(metric(page, "Registros de espécies")).toHaveText("3");
+  await nav(page, sourceById.weekly.title).click();
+  await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+  expect(external).toEqual([]);
+});
+
+test("Dados anteriores permanecem na atualização e uma base corrompida não bloqueia as demais", async ({ page }) => {
+  await page.goto("./");
+  await upload(page, "operations", fixture(), "controle.xlsx");
+  await upload(page, "weekly", weeklyFixture(), "semanal.xlsx");
+  await upload(page, "taxonomy", taxonomyFixture(), "catalogo.xlsx");
+  await page.evaluate(() => localStorage.setItem("t3b:excel:taxonomy:v1", "inválido"));
+  await page.reload();
+  await expect(metric(page, "Recebidos")).toHaveText("10,5");
+  await expect(page.getByRole("alert")).toContainText(sourceById.taxonomy.title);
+  await nav(page, sourceById.weekly.title).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  await upload(page, "taxonomy", taxonomyFixture(), "catalogo-recuperado.xlsx");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("heading", { name: "Inserir dados", exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await nav(page, sourceById.taxonomy.title).click();
+  await expect(metric(page, "Registros de espécies")).toHaveText("3");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

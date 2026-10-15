@@ -1,5 +1,6 @@
 import definitions from "./definitions.json" with { type: "json" };
 import { norm, validDate } from "./domain.mjs";
+import { sourceById } from "./sources.mjs";
 
 const optional = new Set(["madeiras", "semanal", "apuracoes"]);
 const numeric = {
@@ -113,10 +114,50 @@ export function parseWorkbook(workbook, fileName, importedAt = new Date().toISOS
   return { version: 1, fileName, importedAt, records, definitions: importedDefinitions, warnings, sheets };
 }
 
-export async function readExcel(buffer, fileName) {
+export function parseSupplement(workbook, source, fileName, importedAt = new Date().toISOString()) {
+  const config = sourceById[source];
+  if (!config?.headers) throw Error("Tipo de planilha não reconhecido.");
+  const sheet = workbook.worksheets.find((s) => normalized(s.name) === normalized(config.sheet));
+  if (!sheet) throw Error(`A aba obrigatória "${config.sheet}" não foi encontrada. Selecione a planilha de ${config.title}.`);
+  const header = headerRow(sheet, { id: source, ...config });
+  const records = [], warnings = [], notes = [];
+  sheet.eachRow((row, n) => {
+    if (n <= header) return;
+    const cells = config.headers.map((_, i) => valueOf(row.getCell(i + 1).value));
+    if (!cells.some(present) || normalized(cells[0]) === "total") return;
+    if (!present(cells[0])) throw Error(`${sheet.name}, linha ${n}: preencha ${config.headers[0]} antes de importar.`);
+    if (source === "weekly") {
+      for (let i = 1; i < cells.length; i++) {
+        cells[i] = numberOf(cells[i]);
+        if (present(cells[i]) && (typeof cells[i] !== "number" || !Number.isFinite(cells[i]) || cells[i] < 0)) {
+          throw Error(`${sheet.name}, linha ${n}: o valor de "${config.headers[i]}" deve ser um número maior ou igual a zero.`);
+        }
+      }
+      const sum = cells.slice(1, 5).reduce((total, value) => total + (value || 0), 0);
+      if (cells.slice(1, 5).some((value) => !present(value))) warnings.push(`Linha ${n}: há fornecedor sem quantidade salva. Campos vazios não entram nas somas.`);
+      if (!present(cells[5]) || Math.abs(sum - cells[5]) > 0.000001) warnings.push(`Linha ${n}: o TOTAL salvo difere da soma dos fornecedores ou está vazio. O dashboard usa a soma das colunas de fornecedores.`);
+    } else {
+      for (let i = 0; i < cells.length; i++) if (cells[i] !== null) cells[i] = String(cells[i]);
+    }
+    records.push({ id: `${source}:${n}`, kind: source, cells, source_sheet: sheet.name, source_row: n });
+  });
+  if (source === "taxonomy") {
+    const noteSheet = workbook.worksheets.find((s) => normalized(s.name) === "fontes e notas");
+    if (noteSheet) {
+      noteSheet.eachRow((row, n) => {
+        if (n === 1) return;
+        const item = valueOf(row.getCell(1).value), description = valueOf(row.getCell(2).value);
+        if (present(item) || present(description)) notes.push([String(item ?? ""), String(description ?? "")]);
+      });
+    }
+  }
+  return { version: 1, source, fileName, importedAt, records, headers: [...config.headers], warnings, notes };
+}
+
+export async function readExcel(buffer, fileName, source = "operations") {
   const { default: ExcelJS } = await import("exceljs");
   const workbook = new ExcelJS.Workbook();
   try { await workbook.xlsx.load(buffer); }
   catch { throw Error("Não foi possível ler o arquivo. Selecione uma planilha .xlsx válida, sem senha de proteção para abertura."); }
-  return parseWorkbook(workbook, fileName);
+  return source === "operations" ? parseWorkbook(workbook, fileName) : parseSupplement(workbook, source, fileName);
 }
