@@ -1,4 +1,4 @@
-// Uses only the aggregated data already visible to the dashboard's current role.
+// Uses only the aggregated data from the locally imported workbook.
 export function chartDetails(option) {
   const series = option.series || [];
   const pie = series[0]?.type === "pie";

@@ -1,9 +1,12 @@
 .private/
 node_modules/
+.pnpm-store/
 dist/
 .env*
 !.env.example
 playwright-report/
 test-results/
+*.xlsx
+*.xls
 __pycache__/
 scripts/debug-local.mjs

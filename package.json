@@ -7,10 +7,10 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "node --test tests/*.test.mjs",
+    "test:e2e": "pnpm build && playwright test",
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "2.114.0",
     "echarts": "5.6.0",
     "exceljs": "4.4.0",
     "jspdf": "4.2.1",

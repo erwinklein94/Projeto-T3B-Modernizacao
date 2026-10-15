@@ -1,54 +1,50 @@
 # Projeto T3B · Modernização
 
-Portal de gestão de dormentes para GitHub Pages e Supabase, em português.
+Leitor local de planilhas de controle de dormentes. O site tem apenas Dashboard e Registros, sem login, contas, perfis ou conexão com banco de dados.
 
-## Executar
+## Usar
 
-Node.js 24 e pnpm 11.25.0. Instale com `pnpm install --frozen-lockfile`, configure `.env.local` com a chave **publicável** conforme `.env.example` e execute `pnpm dev`. Testes: `pnpm test`. Produção: `pnpm build`.
+1. Abra **Registros → Importar planilha Excel**.
+2. Selecione a planilha `.xlsx` mais atualizada, com as abas e colunas no padrão original.
+3. Consulte os registros, os filtros e os indicadores do Dashboard.
 
-O workflow publica `dist` no GitHub Pages quando a branch `main` recebe alterações. Configure Pages para **GitHub Actions** e a variável de repositório `VITE_SUPABASE_PUBLISHABLE_KEY`. A URL base é `/Projeto-T3B-Modernizacao/`.
+A importação substitui integralmente a base anterior. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
 
-## Banco e contas
+Os dados são processados no dispositivo e persistidos somente no `localStorage` deste site, neste navegador. Recarregar a página mantém a última importação. Outro dispositivo, navegador ou perfil começa vazio. Abas abertas no mesmo navegador acompanham a substituição ou limpeza dos dados. O arquivo Excel não é enviado a nenhum servidor.
 
-Projeto autorizado: `ixzvvyslbsuwnyhrxqwf`. Aplique `supabase/schema.sql` uma única vez em banco sem as tabelas T3B. As tabelas têm RLS e o esquema privado concentra funções com privilégios mínimos. Publique a função `supabase/functions/t3b-create-user/index.ts`, que valida a sessão e consulta o perfil Editor antes de chamar a API administrativa. A verificação JWT do gateway está ativa. A função também valida a sessão e a autorização do perfil Editor.
+Sem importação, o site exibe somente a estrutura e os estados vazios. **Limpar dados locais** remove a base importada; limpar o armazenamento do navegador tem o mesmo efeito. Não há cópia de segurança ou sincronização remota. Falhas de leitura, validação ou gravação preservam a base anterior.
 
-Extraia o ZIP em `.private/source` e execute `scripts/extract_history.py` com Python e openpyxl. A extração não altera os arquivos originais. Ela gera os registros, o arquivo de reconciliação e uma cópia dos valores e fórmulas de todas as abas. `.private` fica fora do Git e da publicação.
+## Padrão da planilha
 
-Para importar e provisionar, execute `node scripts/provision.mjs` com `SUPABASE_SERVICE_ROLE_KEY` e `T3B_INITIAL_PASSWORD` no ambiente. O script cria as três contas solicitadas, usa chaves de origem para evitar duplicação e confere contagens. Contas já existentes têm suas senhas preservadas. Nunca coloque a chave administrativa ou senhas no frontend, no repositório ou nas variáveis `VITE_*`.
+Abas obrigatórias: `Parametros`, `Recebimentos`, `Movimentacoes`, `Danificados`, `Devolucoes_Danificados`, `Conciliacao`, `Consumo_Final` e `Transferencias`.
 
-## Perfis
+Abas opcionais: `Danif.`, `Recebimento Semanal` e `Propriedades da Madeira`. Abas adicionais, como Dashboard e Gráficos do Excel, são ignoradas. As colunas operacionais devem manter nomes e ordem. A aba `Danif.` aceita novas colunas de datas de apuração. Uma importação sem uma aba opcional remove seus dados da base anterior.
 
-| Perfil | Dashboard | Registros | Criar contas | Auditoria |
-|---|---|---|---|---|
-| Editor | Sim | Gerencia | Sim | Sim |
-| Coordenador | Sim | Gerencia | Não | Não |
-| Analista | Sim | Gerencia | Não | Não |
-| Consulta | Sim | Não | Não | Não |
-
-Consulta recebe apenas campos necessários aos gráficos via RPC protegida. Documentos fiscais, placas, responsáveis e observações não são expostos nesse retorno. Usuários sem perfil não recebem acesso. Perfis são provisionados por `app_metadata` administrativo, nunca por metadados editáveis pelo usuário.
-
-Logins são auditados por trigger de sessão. Criação, alteração e exclusão lógica de registros são auditadas por triggers, incluindo estado anterior e posterior. Navegação, apresentação, exportações e saída são eventos da aplicação. Como qualquer evento de interface, eles não provam que uma pessoa leu uma página e podem ser omitidos por clientes modificados. Eventos do Editor são excluídos da auditoria, conforme solicitado.
-
-## Histórico e cálculos
-
-- Todas as abas operacionais preenchidas foram preservadas; as contagens e os totais de conferência estão em `.private/reconciliation.json`.
-- 56 linhas com apenas localização física pré-preenchida foram excluídas dos registros operacionais; permanecem no arquivo de origem.
-- As abas vazias de consumo, transferência e devolução continuam disponíveis para cadastro.
-- Datas em texto e horários `00:00:00` são preservados. Filtros de período excluem datas não interpretáveis. Frações de unidades são mantidas.
-- O histórico de movimentações é a fonte do saldo. Recebimentos e resumos semanais não são somados a ele. Um novo recebimento cadastrado no site gera uma única movimentação vinculada. Alterar ou excluir esse recebimento atualiza a movimentação. Movimentações históricas são preservadas independentemente dos recebimentos históricos.
-- Saídas, transferências, consumo e devoluções devem ter o efeito no estoque registrado em Movimentações. Não são lançadas automaticamente por essas abas, evitando duplicidade e interpretações indevidas.
-- O saldo do período é entradas menos saídas no intervalo, não o estoque inicial mais o movimento. Para estoque acumulado, mantenha a data inicial vazia.
+- Cabeçalhos são identificados nas primeiras dez linhas, preservando os títulos e espaços de apresentação do modelo.
+- Linhas vazias, linhas contendo apenas fórmulas e linhas de recebimento contendo apenas localização pré-preenchida são ignoradas.
+- Datas do Excel são convertidas sem mudança de dia por fuso horário. Datas em texto não interpretáveis e quantidades fracionadas são preservadas.
+- Fórmulas usam os resultados armazenados no arquivo; o leitor não é um motor de cálculo do Excel. Recalcule e salve o arquivo no Excel antes de importar. Erros de células e fórmulas de quantidade/volume sem valor salvo geram avisos. Valores ausentes ou erros não são somados como números.
+- O saldo é calculado exclusivamente pelas entradas e saídas em Movimentacoes. Recebimentos, consumo, transferências e resumos não geram movimentações adicionais.
+- Filtros de período excluem datas não interpretáveis. Saldo do período significa entradas menos saídas no intervalo. Sem data inicial, o saldo inclui todo o histórico importado.
 - Associação de fornecedor nas movimentações usa pátio, lote e espécie. Lotes ambíguos não são atribuídos automaticamente.
-- Resumos semanais e apurações são fotografias independentes. Não recebem filtros de data, espécie ou pátio e não são somados aos indicadores. As imagens do anexo referem-se a um recorte anterior ao final da planilha.
+- Apurações e resumos semanais são referências independentes e não são somados aos indicadores.
 
-## Exportações e apresentação
+Exportações de consulta para Excel e PDF, detalhes dos gráficos, apresentação e temas continuam disponíveis.
 
-Excel: `.xlsx` com as colunas na ordem da aba original, datas numéricas e valores preservados. Cabeçalhos na primeira linha; copie as linhas seguintes para a tabela da planilha original. Não há coluna interna de banco na exportação. Filtros são aplicados antes da exportação, sem limite da paginação de tela.
+## Desenvolvimento e publicação
 
-PDF: resumo e gráficos do dashboard, com filtros e horário de emissão. Tema claro é o padrão a cada abertura; o tema escuro é temporário. O botão Apresentar usa a API de tela cheia.
+Node.js 24 e pnpm 11.25.0:
 
-Identidade: cores do [brandbook Rumo](https://brandbook.rumolog.com/paleta.html), com Verdana como fonte de sistema indicada pelo guia. O texto de marca é uma representação tipográfica; substitua por um ativo oficial se necessário.
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+pnpm test
+pnpm build
+pnpm test:e2e
+```
 
-## Prévia local
+Os testes de navegador precisam do Chromium do Playwright (`pnpm exec playwright install chromium`) ou de `PLAYWRIGHT_CHANNEL=chrome` para usar o Chrome instalado. Usam planilhas sintéticas e o build de produção, sem dados privados.
 
-Somente no servidor de desenvolvimento, `?preview=1` carrega `.private/history.json` em modo de leitura. Esse caminho não existe no build de produção. Não exponha o servidor de desenvolvimento publicamente.
+O workflow publica somente `dist` no GitHub Pages quando `main` recebe alterações. Configure Pages para **GitHub Actions**. Base: `/Projeto-T3B-Modernizacao/`. Não são necessárias variáveis de ambiente, chaves ou serviços externos de dados. O servidor de desenvolvimento também começa vazio e não fornece histórico privado.
+
+Planilhas reais, dados históricos e arquivos privados ficam fora do Git e do build. A antiga integração com Supabase foi removida do código; esta migração não executa alterações no serviço remoto.

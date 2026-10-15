@@ -20,8 +20,9 @@
       "Tipo de dano"
     ],
     "dates": [],
-    "numbers": [1],
-    "formulas": {}
+    "numbers": [
+      1
+    ]
   },
   {
     "id": "recebimentos",
@@ -48,12 +49,17 @@
       "Qtd. danificada no recebimento (un.)",
       "ID Danificado vinculado"
     ],
-    "dates": [1],
-    "numbers": [0, 6, 7, 9, 10, 11],
-    "formulas": {
-      "9": "=TblRecebimentos[[#This Row],[Volume documento (m³)]]/0.114",
-      "11": "=IF(J5=\"\",\"\",J5*Parametros!$B$5)"
-    }
+    "dates": [
+      1
+    ],
+    "numbers": [
+      0,
+      6,
+      7,
+      9,
+      10,
+      11
+    ]
   },
   {
     "id": "movimentacoes",
@@ -80,19 +86,16 @@
       "ID Ação/Devolução",
       "Área/posição física"
     ],
-    "dates": [0],
-    "numbers": [4, 6, 7, 8, 9],
-    "formulas": {
-      "0": "=TblRecebimentos[[#This Row],[Data Receb./Baixa sistema]]",
-      "2": "=TblRecebimentos[[#This Row],[Pátio]]",
-      "3": "=Recebimentos!D5",
-      "5": "=Recebimentos!I5",
-      "6": "=TblRecebimentos[[#This Row],[Volume documento (m³)]]/0.114",
-      "7": "=TblMovimentacoes[[#This Row],[Entrada (un.)]]",
-      "9": "=TblMovimentacoes[[#This Row],[Volume entrada (m³)]]",
-      "8": "=TblMovimentacoes[[#This Row],[Entrada (un.)]]*0.1142",
-      "4": "=Recebimentos!G759"
-    }
+    "dates": [
+      0
+    ],
+    "numbers": [
+      4,
+      6,
+      7,
+      8,
+      9
+    ]
   },
   {
     "id": "danificados",
@@ -121,21 +124,28 @@
       "Evidência/Foto",
       "Observações"
     ],
-    "dates": [1],
-    "numbers": [9, 10, 15, 16],
-    "formulas": {
-      "10": "=IF(J5=\"\",\"\",J5*Parametros!$B$5)",
-      "17": "=IF(A6=\"\",\"\",IF(Q6<0,\"DIVERGÊNCIA\",IF(Q6=0,\"ENCERRADO\",IF(P6=0,\"PENDENTE\",\"PARCIAL\"))))"
-    }
+    "dates": [
+      1
+    ],
+    "numbers": [
+      9,
+      10,
+      15,
+      16
+    ]
   },
   {
     "id": "apuracoes",
     "name": "Danif.",
     "sheet": "Danif.",
-    "headers": ["DANIFICADOS", "2026-09-15 00:00:00", "2026-09-25 00:00:00"],
+    "headers": [
+      "DANIFICADOS",
+      "Apuração"
+    ],
     "dates": [],
-    "numbers": [1, 2],
-    "formulas": {}
+    "numbers": [
+      1
+    ]
   },
   {
     "id": "devolucoes",
@@ -164,9 +174,12 @@
       "Responsável",
       "Comprovante / Observações"
     ],
-    "dates": [2, 3, 18],
-    "numbers": [],
-    "formulas": {}
+    "dates": [
+      2,
+      3,
+      18
+    ],
+    "numbers": []
   },
   {
     "id": "conciliacao",
@@ -191,16 +204,12 @@
       "Dif. danificados (un.)",
       "Status danificados"
     ],
-    "dates": [0],
-    "numbers": [14],
-    "formulas": {
-      "9": "=IF(OR(H5=\"\",I5=\"\"),\"\",H5-I5)",
-      "10": "=IF(F5=\"\",\"\",IF(F5=0,\"OK\",\"DIVERGÊNCIA\"))",
-      "11": "=IF(J5=\"\",\"\",IF(ABS(J5)<=Parametros!$B$6,\"OK\",\"DIVERGÊNCIA\"))",
-      "14": "=IF(OR(B5=\"\",C5=\"\"),\"\",SUMIFS(Movimentacoes!$G$5:$G$1324,Movimentacoes!$C$5:$C$1324,B5,Movimentacoes!$F$5:$F$1324,C5,Movimentacoes!$P$5:$P$1324,\"Danificado segregado\")-SUMIFS(Movimentacoes!$H$5:$H$1324,Movimentacoes!$C$5:$C$1324,B5,Movimentacoes!$F$5:$F$1324,C5,Movimentacoes!$P$5:$P$1324,\"Danificado segregado\"))",
-      "15": "=IF(OR(N5=\"\",O5=\"\"),\"\",N5-O5)",
-      "16": "=IF(P5=\"\",\"\",IF(P5=0,\"OK\",\"DIVERGÊNCIA\"))"
-    }
+    "dates": [
+      0
+    ],
+    "numbers": [
+      14
+    ]
   },
   {
     "id": "consumo",
@@ -221,9 +230,10 @@
       "Responsável/Equipe",
       "Observações"
     ],
-    "dates": [1],
-    "numbers": [],
-    "formulas": {}
+    "dates": [
+      1
+    ],
+    "numbers": []
   },
   {
     "id": "transferencias",
@@ -250,9 +260,11 @@
       "Qtd. danificada no destino (un.)",
       "ID Danificado vinculado"
     ],
-    "dates": [1, 14],
-    "numbers": [],
-    "formulas": {}
+    "dates": [
+      1,
+      14
+    ],
+    "numbers": []
   },
   {
     "id": "madeiras",
@@ -272,8 +284,16 @@
       "Fonte"
     ],
     "dates": [],
-    "numbers": [2, 3, 4, 5, 6, 7, 8, 9],
-    "formulas": {}
+    "numbers": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9
+    ]
   },
   {
     "id": "semanal",
@@ -288,9 +308,12 @@
       "TOTAL"
     ],
     "dates": [],
-    "numbers": [1, 2, 3, 4, 5],
-    "formulas": {
-      "5": "=SUM(B4:E4)"
-    }
+    "numbers": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ]
   }
 ]

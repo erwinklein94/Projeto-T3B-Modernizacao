@@ -1,0 +1,84 @@
+import { test, expect } from "@playwright/test";
+import { fixture, filePayload } from "../workbook-fixture.mjs";
+
+const records = (page) => page.getByRole("button", { name: "Registros", exact: true });
+const upload = (page, payload) => page.getByLabel("Selecionar planilha Excel").setInputFiles(payload);
+const received = (page) => page.locator(".kpi").filter({ hasText: "Recebidos" }).locator("strong");
+
+test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem enviar dados", async ({ page, context }) => {
+  const external = [], errors = [];
+  page.on("request", (request) => { if (!request.url().startsWith("http://127.0.0.1:") && !request.url().startsWith("blob:")) external.push(request.url()); });
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("./");
+  await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
+  await expect(page.locator("input[type=password]")).toHaveCount(0);
+  await expect(page.locator("nav button")).toHaveCount(2);
+  await records(page).click();
+  await upload(page, await filePayload());
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "00123", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Novo registro" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await expect(received(page)).toHaveText("10,5");
+  await page.getByLabel("Data inicial", { exact: true }).fill("2026-06-21");
+  await expect(received(page)).toHaveText("0");
+  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await expect(received(page)).toHaveText("10,5");
+  await page.reload();
+  await expect(received(page)).toHaveText("10,5");
+  const otherTab = await context.newPage();
+  await otherTab.goto("./");
+  await expect(received(otherTab)).toHaveText("10,5");
+  await records(page).click();
+  await upload(page, await filePayload(fixture(20), "atualizada.xlsx"));
+  await expect(page.getByText("Planilha: atualizada.xlsx", { exact: true })).toBeVisible();
+  await expect(received(otherTab)).toHaveText("20");
+  await expect(page.locator(".table-title")).toContainText("1 registros");
+  await upload(page, { name: "invalida.xlsx", mimeType: "application/octet-stream", buffer: Buffer.from("inválido") });
+  await expect(page.getByRole("alert")).toContainText("Não foi possível ler");
+  await expect(page.getByText("Planilha: atualizada.xlsx", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Limpar dados locais", exact: true }).click();
+  await page.getByRole("button", { name: "Confirmar limpeza" }).click();
+  await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
+  await expect(received(otherTab)).toHaveText("0");
+  await page.reload();
+  await expect(received(page)).toHaveText("0");
+  expect(external).toEqual([]);
+  expect(errors).toEqual([]);
+});
+
+test("Falha na gravação e colunas inválidas mantêm a base anterior", async ({ page }) => {
+  await page.goto("./");
+  await records(page).click();
+  await upload(page, await filePayload());
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  const wrong = fixture(30);
+  wrong.getWorksheet("Recebimentos").getCell("J4").value = "Coluna alterada";
+  await upload(page, await filePayload(wrong, "fora-do-padrao.xlsx"));
+  await expect(page.getByRole("alert")).toContainText("fora do padrão");
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  await page.evaluate(() => { Storage.prototype.setItem = () => { throw new DOMException("Quota exceeded", "QuotaExceededError"); }; });
+  await upload(page, await filePayload(fixture(30), "sem-espaco.xlsx"));
+  await expect(page.getByRole("alert")).toContainText("Os dados anteriores foram mantidos");
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(received(page)).toHaveText("10,5");
+});
+
+test("Navegador independente abre vazio e armazenamento corrompido permite nova importação", async ({ page, browser }) => {
+  await page.goto("./");
+  await records(page).click();
+  await upload(page, await filePayload());
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  const independent = await browser.newContext();
+  const clean = await independent.newPage();
+  await clean.goto("http://127.0.0.1:4173/Projeto-T3B-Modernizacao/");
+  await expect(clean.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
+  await independent.close();
+  await page.evaluate(() => localStorage.setItem("t3b:excel:v1", "inválido"));
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("recuperar os dados locais");
+  await records(page).click();
+  await upload(page, await filePayload());
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+});
