@@ -15,7 +15,7 @@ test("Pizza, resumo e fornecedor acompanham a importação e os filtros, arredon
   await page.getByRole("button", { name: "Inserir dados", exact: true }).click();
   await page.getByLabel("Controle Dormentes Volume Espécies Jales", { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(workbook));
   await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "Controle Dormentes Volume Espécies Jales", exact: true }).click();
   const summary = page.locator(".species-summary");
   await expect(summary.getByRole("row").filter({ hasText: "Cambará" })).toContainText("11");
   await expect(summary.getByRole("row").filter({ hasText: "Guariúba" })).toContainText("29%");
@@ -42,20 +42,20 @@ test("Pizza, resumo e fornecedor acompanham a importação e os filtros, arredon
   await page.getByRole("button", { name: "Fechar detalhes do gráfico" }).click();
   await expect(summary.locator("tfoot td").first()).toHaveText("15");
 
-  await page.getByLabel("Data final", { exact: true }).fill("2026-06-20");
+  await page.getByRole("region", { name: "Filtros do dashboard", exact: true }).getByLabel("Data final", { exact: true }).fill("2026-06-20");
   await expect(supplier).toHaveValue("Fornecedor A");
   await expect(page.getByRole("heading", { name: "Espécies · Fornecedor A", exact: true })).toBeVisible();
   await expect(summary.locator("tbody tr")).toHaveCount(1);
   await expect(summary.locator("tfoot td").first()).toHaveText("11");
-  await page.getByLabel("Data inicial", { exact: true }).fill("2026-06-22");
+  await page.getByRole("region", { name: "Filtros do dashboard", exact: true }).getByLabel("Data inicial", { exact: true }).fill("2026-06-22");
   await expect(summary.getByText("Nenhum recebimento encontrado.", { exact: true })).toBeVisible();
   await expect(supplier).toBeDisabled();
-  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await page.getByRole("region", { name: "Filtros do dashboard", exact: true }).getByRole("button", { name: "Limpar", exact: true }).click();
   await page.getByRole("button", { name: "Ativar tema escuro", exact: true }).click();
   await expect(summary.locator("tbody tr")).toHaveCount(2);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.getByRole("button", { name: "Registros", exact: true }).click();
+  await page.getByRole("button", { name: "Controle Dormentes Volume Espécies Jales", exact: true }).click();
   await expect(page.getByRole("cell", { name: "10,5", exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });

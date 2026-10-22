@@ -1,12 +1,12 @@
 # Projeto T3B · Modernização
 
-Leitor local de quatro planilhas, com página Inserir dados, Registros e quatro dashboards. Sem login, contas, perfis ou conexão com banco de dados.
+Leitor local de quatro planilhas, com página Inserir dados e quatro dashboards. Os registros operacionais ficam no final do dashboard Controle Dormentes Volume Espécies Jales, abaixo dos gráficos. Sem login, contas, perfis ou conexão com banco de dados.
 
 ## Usar
 
 1. Abra **Inserir dados** no menu lateral.
 2. No campo correspondente, selecione a planilha `.xlsx` mais atualizada, com as abas e colunas no padrão original.
-3. Consulte Registros e Dashboard para o controle de dormentes ou abra os dashboards **Controle Semanal Recebimentos por Fornecedor**, **Catálogo Taxonômico Espécies Jales** e **Propriedades da Madeira**.
+3. Abra **Controle Dormentes Volume Espécies Jales** para consultar os gráficos e, no final da mesma página, a seção **Registros**, com abas, filtros próprios, paginação e exportação Excel. Os demais dashboards são **Controle Semanal Recebimentos por Fornecedor**, **Catálogo Taxonômico Espécies Jales** e **Propriedades da Madeira**.
 
 A importação substitui integralmente apenas a base daquele campo, preservando as demais. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
 

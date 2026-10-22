@@ -47,7 +47,7 @@ import { DashboardCharts, ReceiptSpecies } from "./charts";
 import { speciesNames } from "./species-reference.mjs";
 import { exportExcel, exportPDF } from "./exports";
 import "./style.css";
-const labels = { dashboard: "Dashboard", records: "Registros", insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title, wood: sourceById.wood.title };
+const labels = { dashboard: sourceById.operations.title, insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title, wood: sourceById.wood.title };
 function Button({ children, icon: Icon, ...p }) {
   return (
     <button {...p}>
@@ -83,10 +83,10 @@ function Filters({ value: f, onChange, records, kind, dashboard = false }) {
   };
   const set = (k, v) => onChange({ ...f, [k]: v });
   return (
-    <div className="filters panel">
+    <div className="filters panel" role="region" aria-label={dashboard ? "Filtros do dashboard" : "Filtros dos registros"}>
       <div className="filter-title">
         <Search size={17} />
-        <strong>Filtros</strong>
+        <strong>{dashboard ? "Filtros do dashboard" : "Filtros dos registros"}</strong>
         <button
           className="text-button"
           onClick={() => onChange({ ...emptyFilters })}
@@ -241,12 +241,120 @@ function App() {
       setExporting(false);
     }
   };
+  const recordsSection = (
+    <section id="registros" className="records-section" aria-labelledby="records-title">
+      <div className="heading">
+        <div>
+          <span className="eyebrow">CONTROLE OPERACIONAL</span>
+          <h2 id="records-title">Registros</h2>
+          <p>Consulte os dados desta planilha. Os filtros dos registros são independentes dos filtros dos gráficos.</p>
+        </div>
+        <div className="actions">
+          <Button icon={Download} disabled={exporting || loading || !rows.length}
+            onClick={() => runExport(() => exportExcel(def, rows))}>Exportar Excel</Button>
+        </div>
+      </div>
+      <div className="tabs" role="tablist">
+        {currentDefinitions
+          .filter((d) => d.id !== "parametros")
+          .map((d) => (
+            <button
+              role="tab"
+              aria-selected={kind === d.id}
+              className={kind === d.id ? "selected" : ""}
+              onClick={() => {
+                setKind(d.id);
+                setRegFilter({ ...emptyFilters });
+              }}
+              key={d.id}
+            >
+              {d.name}
+            </button>
+          ))}
+        <button
+          onClick={() => {
+            setKind("parametros");
+            setRegFilter({ ...emptyFilters });
+          }}
+          className={kind === "parametros" ? "selected" : ""}
+        >
+          Parâmetros
+        </button>
+      </div>
+      <Filters
+        value={regFilter}
+        onChange={setRegFilter}
+        records={records}
+        kind={kind}
+      />
+      <article className="panel">
+        <div className="table-title">
+          <h3>{def.name}</h3>
+          <span>
+            {rows.length} registros · colunas na ordem do Excel original
+          </span>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                {def.headers.map((h, i) => (
+                  <th key={i}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows
+                .slice(pagination * 30, (pagination + 1) * 30)
+                .map((r) => (
+                  <tr key={r.id || r.source_key}>
+                    {r.cells.map((v, i) => (
+                      <td key={i} title={String(v ?? "")}>
+                        {def.dates.includes(i)
+                          ? dateText(v)
+                          : typeof v === "number"
+                            ? fmt(v, 6)
+                            : (v ?? "—")}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </div>
+        {!rows.length && (
+          <p className="empty">
+            Nenhum registro encontrado. Importe uma planilha ou ajuste os filtros.
+          </p>
+        )}
+        <div className="pagination">
+          <span>
+            Página {pagination + 1} de{" "}
+            {Math.max(1, Math.ceil(rows.length / 30))}
+          </span>
+          <Button
+            disabled={!pagination}
+            onClick={() => setPagination(pagination - 1)}
+          >
+            Anterior
+          </Button>
+          <Button
+            disabled={(pagination + 1) * 30 >= rows.length}
+            onClick={() => setPagination(pagination + 1)}
+          >
+            Próxima
+          </Button>
+        </div>
+      </article>
+      <p className="footnote">Consulta dos valores salvos no Excel, sem edição de registros no site. O saldo é calculado pelas movimentações, sem somar novamente os recebimentos.</p>
+    </section>
+  );
   const dashboard = (
     <>
       <div className="heading">
         <div>
           <span className="eyebrow">OPERAÇÃO EM NÚMEROS</span>
-          <h1>Visão geral</h1>
+          <h1>{sourceById.operations.title}</h1>
           <p>Acompanhe os recebimentos e o estoque de dormentes.</p>
         </div>
         <Button
@@ -380,6 +488,7 @@ function App() {
         </article>
       </div>
       <HistoricalTables records={records} filters={filter} defById={defById} />
+      {recordsSection}
     </>
   );
   return (
@@ -390,7 +499,6 @@ function App() {
         <nav>
           {[
             [LayoutDashboard, "dashboard"],
-            [Rows3, "records"],
             [CalendarRange, "weekly"],
             [Leaf, "taxonomy"],
             [FlaskConical, "wood"],
@@ -459,7 +567,7 @@ function App() {
           </div>
         </header>
         <main>
-          {!dataset && ["dashboard", "records"].includes(page) && (
+          {!dataset && page === "dashboard" && (
             <div className="notice empty-import">
               <div><strong>Nenhuma planilha importada</strong>
               <p>Importe sua planilha de controle em Inserir dados para preencher os dados e o dashboard. Os dados ficam salvos somente neste navegador.</p></div>
@@ -467,120 +575,12 @@ function App() {
             </div>
           )}
           {loading && <div role="status" className="notice">Lendo e validando a planilha… Aguarde a conclusão da importação.</div>}
-          {["dashboard", "records"].includes(page) && <SourceStatus dataset={dataset} />}
+          {page === "dashboard" && <SourceStatus dataset={dataset} />}
           {page === "insert" && <ImportPage datasets={datasets} busySource={busySource} onImport={importFile} onClear={setRemoving} onNavigate={navigate} />}
           {page === "weekly" && <WeeklyDashboard key={`weekly:${datasets.weekly?.importedAt || "empty"}`} dataset={datasets.weekly} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "taxonomy" && <TaxonomyDashboard key={`taxonomy:${datasets.taxonomy?.importedAt || "empty"}`} dataset={datasets.taxonomy} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "wood" && <WoodDashboard key={`wood:${datasets.wood?.importedAt || "empty"}`} dataset={datasets.wood} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "dashboard" && dashboard}
-          {page === "records" && (
-            <>
-              <div className="heading">
-                <div>
-                  <span className="eyebrow">CONTROLE OPERACIONAL</span>
-                  <h1>Registros</h1>
-                  <p>Consulte os dados da planilha de controle importada em Inserir dados.</p>
-                </div>
-                <div className="actions">
-                  <Button icon={Download} disabled={exporting || loading || !rows.length}
-                    onClick={() => runExport(() => exportExcel(def, rows))}>Exportar Excel</Button>
-                </div>
-              </div>
-              <div className="tabs" role="tablist">
-                {currentDefinitions
-                  .filter((d) => d.id !== "parametros")
-                  .map((d) => (
-                    <button
-                      role="tab"
-                      aria-selected={kind === d.id}
-                      className={kind === d.id ? "selected" : ""}
-                      onClick={() => {
-                        setKind(d.id);
-                        setRegFilter({ ...emptyFilters });
-                      }}
-                      key={d.id}
-                    >
-                      {d.name}
-                    </button>
-                  ))}
-                <button
-                  onClick={() => {
-                    setKind("parametros");
-                    setRegFilter({ ...emptyFilters });
-                  }}
-                  className={kind === "parametros" ? "selected" : ""}
-                >
-                  Parâmetros
-                </button>
-              </div>
-              <Filters
-                value={regFilter}
-                onChange={setRegFilter}
-                records={records}
-                kind={kind}
-              />
-              <article className="panel">
-                <div className="table-title">
-                  <h3>{def.name}</h3>
-                  <span>
-                    {rows.length} registros · colunas na ordem do Excel original
-                  </span>
-                </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        {def.headers.map((h, i) => (
-                          <th key={i}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows
-                        .slice(pagination * 30, (pagination + 1) * 30)
-                        .map((r) => (
-                          <tr key={r.id || r.source_key}>
-                            {r.cells.map((v, i) => (
-                              <td key={i} title={String(v ?? "")}>
-                                {def.dates.includes(i)
-                                  ? dateText(v)
-                                  : typeof v === "number"
-                                    ? fmt(v, 6)
-                                    : (v ?? "—")}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-                {!rows.length && (
-                  <p className="empty">
-                    Nenhum registro encontrado. Importe uma planilha ou ajuste os filtros.
-                  </p>
-                )}
-                <div className="pagination">
-                  <span>
-                    Página {pagination + 1} de{" "}
-                    {Math.max(1, Math.ceil(rows.length / 30))}
-                  </span>
-                  <Button
-                    disabled={!pagination}
-                    onClick={() => setPagination(pagination - 1)}
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    disabled={(pagination + 1) * 30 >= rows.length}
-                    onClick={() => setPagination(pagination + 1)}
-                  >
-                    Próxima
-                  </Button>
-                </div>
-              </article>
-              <p className="footnote">Consulta dos valores salvos no Excel, sem edição de registros no site. O saldo é calculado pelas movimentações, sem somar novamente os recebimentos.</p>
-            </>
-          )}
           <footer className="main-footer">
             <span>RUMO · Projeto T3B Modernização</span>
             <span>Gestão de dormentes de madeira</span>
