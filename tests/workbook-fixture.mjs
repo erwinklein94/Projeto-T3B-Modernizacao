@@ -47,3 +47,27 @@ export function taxonomyFixture() {
   notes.addRow(["Fonte", "Catálogo de exemplo para testes"]);
   return workbook;
 }
+
+export function updatedWeeklyFixture() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sourceById.weekly.sheet);
+  sheet.getCell("A1").value = "Recebimentos de exemplo";
+  sheet.getRow(4).values = ["Semana", "Início", "Fim", ...sourceById.weekly.headers.slice(1)];
+  sheet.addRow(["01/06 a 06/06/2026", new Date("2026-06-01T00:00:00Z"), new Date("2026-06-06T00:00:00Z"), 10.5, 2.25, 0, 0, 12.75]);
+  sheet.addRow(["08/06 a 13/06/2026", new Date("2026-06-08T00:00:00Z"), new Date("2026-06-13T00:00:00Z"), 0, 0, 3, 0, 3]);
+  sheet.addRow(["TOTAL GERAL", null, null, 10.5, 2.25, 3, 0, 15.75]);
+  sheet.addRow([]);
+  sheet.addRow(["Fonte: dados fictícios para teste."]);
+  sheet.addRow(["Quantidades arredondadas para apresentação."]);
+  return workbook;
+}
+
+export function splitTaxonomyFixture() {
+  const workbook = taxonomyFixture();
+  const complete = workbook.getWorksheet("Espécies");
+  complete.name = "Especies.Completo";
+  const primary = workbook.addWorksheet("Espécies");
+  primary.addRow(sourceById.taxonomy.headers.slice(0, 4));
+  for (let n = 2; n <= complete.rowCount; n++) primary.addRow(complete.getRow(n).values.slice(1, 5));
+  return workbook;
+}

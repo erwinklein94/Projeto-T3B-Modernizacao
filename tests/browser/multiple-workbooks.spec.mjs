@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { filePayload, fixture, weeklyFixture, taxonomyFixture } from "../workbook-fixture.mjs";
+import { filePayload, fixture, weeklyFixture, taxonomyFixture, updatedWeeklyFixture, splitTaxonomyFixture } from "../workbook-fixture.mjs";
 import { sourceById } from "../../src/sources.mjs";
 
 const nav = (page, name) => page.getByRole("button", { name, exact: true });
-const metric = (page, label) => page.locator(".kpi").filter({ has: page.locator("div", { hasText: label }) }).locator("strong");
+const metric = (page, label) => page.locator(".kpi").filter({ has: page.getByText(label, { exact: true }) }).locator("strong");
 async function upload(page, source, workbook, name) {
   await nav(page, "Inserir dados").click();
   await page.getByLabel(sourceById[source].title, { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(workbook, name));
@@ -82,4 +82,50 @@ test("Dados anteriores permanecem na atualização e uma base corrompida não bl
   await nav(page, sourceById.taxonomy.title).click();
   await expect(metric(page, "Registros de espécies")).toHaveText("3");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("Novos formatos mostram datas e detalhes do catálogo sem duplicar totais e sobrevivem à recarga", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("./");
+  await upload(page, "weekly", updatedWeeklyFixture(), "semanal-atualizada.xlsx");
+  const catalogue = splitTaxonomyFixture();
+  catalogue.getWorksheet("Espécies").getCell("B2").value = "Nome editado no resumo";
+  await upload(page, "taxonomy", catalogue, "catalogo-atualizado.xlsx");
+  await nav(page, sourceById.weekly.title).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  await expect(metric(page, "Semanas")).toHaveText("2");
+  await expect(page.getByRole("columnheader", { name: "Início", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "01/06/2026", exact: true })).toBeVisible();
+  await expect(page.locator(".supplement-table tbody tr")).toHaveCount(2);
+  await page.getByLabel("Fornecedor", { exact: true }).selectOption("Granoski");
+  await expect(metric(page, "Recebidos no período")).toHaveText("2,25");
+  await page.getByText("Fontes e notas da planilha", { exact: true }).click();
+  await expect(page.getByText("Fonte: dados fictícios para teste.", { exact: true })).toBeVisible();
+  await page.reload();
+  await nav(page, sourceById.weekly.title).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  await expect(page.getByRole("cell", { name: "01/06/2026", exact: true })).toBeVisible();
+  await nav(page, sourceById.taxonomy.title).click();
+  await expect(metric(page, "Registros de espécies")).toHaveText("3");
+  await page.getByLabel("Buscar no catálogo").fill("regiao norte");
+  await expect(metric(page, "Registros de espécies")).toHaveText("1");
+  await expect(page.getByRole("cell", { name: "Nome editado no resumo", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Observação de origem", exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await nav(page, sourceById.weekly.title).click();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await upload(page, "weekly", weeklyFixture(), "semanal-antiga.xlsx");
+  await nav(page, sourceById.weekly.title).click();
+  await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
+  await expect(page.getByRole("columnheader", { name: "Início", exact: true })).toHaveCount(0);
+  await expect(page.getByText("Fontes e notas da planilha", { exact: true })).toHaveCount(0);
+  const reduced = splitTaxonomyFixture();
+  reduced.removeWorksheet("Especies.Completo");
+  await upload(page, "taxonomy", reduced, "catalogo-resumido.xlsx");
+  await nav(page, sourceById.taxonomy.title).click();
+  await expect(metric(page, "Registros de espécies")).toHaveText("3");
+  await expect(metric(page, "Com observações")).toHaveText("0");
+  expect(errors).toEqual([]);
 });

@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { Upload, Search } from "lucide-react";
 import { Chart, bar } from "./charts";
-import { fmt, num } from "./domain.mjs";
+import { dateText, fmt, num } from "./domain.mjs";
 import { sourceById } from "./sources.mjs";
 import { summarizeWeekly, summarizeTaxonomy } from "./supplement-domain.mjs";
 import { SourceStatus } from "./import-page";
@@ -19,13 +19,19 @@ function Metrics({ items }) {
 function Select({ label, value, onChange, options, all = "Todos" }) {
   return <label>{label}<select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}><option value="">{all}</option>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
 }
-const weeklyNote = "Quantidades por fornecedor da planilha semanal. Os totais são calculados pelas colunas de fornecedores; a linha TOTAL do Excel não é somada novamente.";
+const weeklyNote = "Quantidades por fornecedor da planilha semanal. Os totais são calculados pelas colunas de fornecedores; linhas TOTAL, TOTAL GERAL e notas não são somadas novamente.";
 const taxonomyNote = "Contagem de registros do catálogo importado. Nomes, famílias, gêneros e observações são apresentados conforme a planilha.";
+function SourceNotes({ notes }) {
+  return notes?.length > 0 && <details className="panel source-notes"><summary>Fontes e notas da planilha</summary><dl>{notes.map(([item, description], i) => <div key={i}><dt>{item}</dt><dd>{description}</dd></div>)}</dl></details>;
+}
 
 export function WeeklyDashboard({ dataset, dark, onInsert }) {
   const [week, setWeek] = useState(""), [supplier, setSupplier] = useState("");
   const source = sourceById.weekly;
   const summary = useMemo(() => summarizeWeekly(dataset, { week, supplier }), [dataset, week, supplier]);
+  const hasStart = Boolean(dataset?.records.some((r) => r.weekStart !== undefined));
+  const hasEnd = Boolean(dataset?.records.some((r) => r.weekEnd !== undefined));
+  const periodColumns = Number(hasStart) + Number(hasEnd);
   const context = [week || "Todas as semanas", supplier || "Todos os fornecedores"].join(" · ");
   return <>
     <Heading source={source} />
@@ -48,11 +54,11 @@ export function WeeklyDashboard({ dataset, dark, onInsert }) {
         option={{ tooltip: { trigger: "item" }, legend: { bottom: 0, type: "scroll" }, series: [{ type: "pie", radius: ["40%", "65%"], center: ["50%", "43%"], data: summary.totals.filter((p) => p.value > 0) }] }} />
     </div>
     <article className="panel supplement-table"><div className="table-title"><h3>Consulta semanal</h3><span>{summary.rows.length} semanas</span></div>
-      <div className="table-wrap"><table><thead><tr><th>Semana</th>{summary.providers.map((p) => <th key={p.name}>{p.name}</th>)}<th>Total selecionado</th></tr></thead>
-        <tbody>{summary.rows.map((row, i) => <tr key={row.id}><td>{row.cells[0]}</td>{summary.providers.map((p) => <td key={p.name}>{row.cells[p.index] === null ? "—" : fmt(row.cells[p.index])}</td>)}<td>{fmt(summary.byWeek[i].total)}</td></tr>)}</tbody>
-        {summary.rows.length > 0 && <tfoot><tr><th>Total</th>{summary.totals.map((p) => <th key={p.name}>{fmt(p.value)}</th>)}<th>{fmt(summary.total)}</th></tr></tfoot>}
+      <div className="table-wrap"><table><thead><tr><th>Semana</th>{hasStart && <th>Início</th>}{hasEnd && <th>Fim</th>}{summary.providers.map((p) => <th key={p.name}>{p.name}</th>)}<th>Total selecionado</th></tr></thead>
+        <tbody>{summary.rows.map((row, i) => <tr key={row.id}><td>{row.cells[0]}</td>{hasStart && <td>{dateText(row.weekStart)}</td>}{hasEnd && <td>{dateText(row.weekEnd)}</td>}{summary.providers.map((p) => <td key={p.name}>{row.cells[p.index] === null ? "—" : fmt(row.cells[p.index])}</td>)}<td>{fmt(summary.byWeek[i].total)}</td></tr>)}</tbody>
+        {summary.rows.length > 0 && <tfoot><tr><th colSpan={1 + periodColumns}>Total</th>{summary.totals.map((p) => <th key={p.name}>{fmt(p.value)}</th>)}<th>{fmt(summary.total)}</th></tr></tfoot>}
       </table></div>{!summary.rows.length && <p className="empty">Nenhuma semana encontrada.</p>}
-    </article><p className="footnote">{weeklyNote} Este controle é independente do dashboard operacional de estoque.</p>
+    </article><SourceNotes notes={dataset?.notes} /><p className="footnote">{weeklyNote} Este controle é independente do dashboard operacional de estoque.</p>
   </>;
 }
 
@@ -80,7 +86,7 @@ export function TaxonomyDashboard({ dataset, dark, onInsert }) {
       <div className="table-wrap"><table><thead><tr>{source.headers.map((h) => <th key={h}>{h}</th>)}</tr></thead><tbody>{summary.rows.map((row) => <tr key={row.id}>{row.cells.map((cell, i) => <td key={i}>{cell ?? "—"}</td>)}</tr>)}</tbody></table></div>
       {!summary.rows.length && <p className="empty">Nenhuma espécie encontrada.</p>}
     </article>
-    {dataset?.notes.length > 0 && <details className="panel source-notes"><summary>Fontes e notas da planilha</summary><dl>{dataset.notes.map(([item, description], i) => <div key={i}><dt>{item}</dt><dd>{description}</dd></div>)}</dl></details>}
+    <SourceNotes notes={dataset?.notes} />
     <p className="footnote">{taxonomyNote}</p>
   </>;
 }

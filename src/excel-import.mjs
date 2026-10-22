@@ -114,19 +114,81 @@ export function parseWorkbook(workbook, fileName, importedAt = new Date().toISOS
   return { version: 1, fileName, importedAt, records, definitions: importedDefinitions, warnings, sheets };
 }
 
+function supplementColumns(sheet, headers, required = headers) {
+  for (let row = 1; row <= Math.min(10, sheet.rowCount); row++) {
+    const columns = new Map();
+    sheet.getRow(row).eachCell((cell, index) => {
+      const key = normalized(valueOf(cell.value));
+      if (!key) return;
+      columns.set(key, [...(columns.get(key) || []), index]);
+    });
+    if (!required.every((name) => columns.has(normalized(name)))) continue;
+    for (const name of headers) {
+      if (columns.get(normalized(name))?.length > 1) throw Error(`A aba "${sheet.name}" tem o cabeçalho "${name}" duplicado. Identifique cada coluna uma única vez.`);
+    }
+    return { row, indices: headers.map((name) => columns.get(normalized(name))?.[0] ?? null) };
+  }
+  throw Error(`A aba "${sheet.name}" está fora do padrão. Confira as colunas obrigatórias: ${required.join(", ")}. A ordem das colunas pode variar.`);
+}
+
+const totalRow = (value) => /^(total|totais)(\s+geral)?\s*:?$/.test(normalized(value));
+const footerNote = (value) => /^(fontes?\s*:|notas?\s*:|observacoes\s*:|quantidades? arredondad)/.test(normalized(value));
+
+function taxonomyRows(sheet, config) {
+  const layout = supplementColumns(sheet, config.headers, config.headers.slice(0, 4));
+  const rows = [];
+  sheet.eachRow((row, n) => {
+    if (n <= layout.row) return;
+    const cells = layout.indices.map((index) => index === null ? null : valueOf(row.getCell(index).value));
+    if (!cells.some(present) || totalRow(cells[0])) return;
+    if (!present(cells[0])) throw Error(`${sheet.name}, linha ${n}: preencha ${config.headers[0]} antes de importar.`);
+    rows.push({ id: `taxonomy:${sheet.name}:${n}`, kind: "taxonomy", cells: cells.map((value) => value === null ? null : String(value)), source_sheet: sheet.name, source_row: n });
+  });
+  return rows;
+}
+
+function mergeTaxonomy(primary, complete, headers, warnings) {
+  const keyOf = (row) => normalized(row.cells[0]);
+  for (const rows of [primary, complete]) {
+    const seen = new Set();
+    for (const row of rows) {
+      const key = keyOf(row);
+      if (seen.has(key)) throw Error(`${row.source_sheet}, linha ${row.source_row}: nome científico duplicado. Confira os registros antes de combinar as abas do catálogo.`);
+      seen.add(key);
+    }
+  }
+  const index = new Map(primary.map((row) => [keyOf(row), row]));
+  for (const row of complete) {
+    const match = index.get(keyOf(row));
+    if (!match) { primary.push(row); index.set(keyOf(row), row); continue; }
+    match.detail_sheet = row.source_sheet;
+    match.detail_row = row.source_row;
+    for (let i = 1; i < headers.length; i++) {
+      if (!present(match.cells[i])) match.cells[i] = row.cells[i];
+      else if (present(row.cells[i]) && normalized(match.cells[i]) !== normalized(row.cells[i])) warnings.push(`${match.source_sheet}, linha ${match.source_row}: "${headers[i]}" difere da aba ${row.source_sheet}. Foi mantido o valor da aba ${match.source_sheet}.`);
+    }
+  }
+  return primary;
+}
+
 export function parseSupplement(workbook, source, fileName, importedAt = new Date().toISOString()) {
   const config = sourceById[source];
   if (!config?.headers) throw Error("Tipo de planilha não reconhecido.");
   const sheet = workbook.worksheets.find((s) => normalized(s.name) === normalized(config.sheet));
-  if (!sheet) throw Error(`A aba obrigatória "${config.sheet}" não foi encontrada. Selecione a planilha de ${config.title}.`);
-  const header = headerRow(sheet, { id: source, ...config });
-  const records = [], warnings = [], notes = [];
-  sheet.eachRow((row, n) => {
-    if (n <= header) return;
-    const cells = config.headers.map((_, i) => valueOf(row.getCell(i + 1).value));
-    if (!cells.some(present) || normalized(cells[0]) === "total") return;
-    if (!present(cells[0])) throw Error(`${sheet.name}, linha ${n}: preencha ${config.headers[0]} antes de importar.`);
-    if (source === "weekly") {
+  const complete = source === "taxonomy" ? workbook.worksheets.find((s) => normalized(s.name).replace(/[.\s_-]/g, "") === "especiescompleto") : null;
+  if (!sheet && !complete) throw Error(`A aba obrigatória "${config.sheet}" não foi encontrada. Selecione a planilha de ${config.title}.`);
+  let records = [];
+  const warnings = [], notes = [];
+  if (source === "weekly") {
+    const layout = supplementColumns(sheet, [...config.headers, "Início", "Fim"], config.headers);
+    sheet.eachRow((row, n) => {
+      if (n <= layout.row) return;
+      const values = layout.indices.map((index) => index === null ? null : valueOf(row.getCell(index).value));
+      const cells = values.slice(0, config.headers.length);
+      if (!values.some(present) || totalRow(cells[0])) return;
+      if (footerNote(cells[0]) && !values.slice(1).some(present)) { notes.push(["Nota da planilha", String(cells[0])]); return; }
+      if (!present(cells[0])) throw Error(`${sheet.name}, linha ${n}: preencha ${config.headers[0]} antes de importar.`);
+      cells[0] = String(cells[0]);
       for (let i = 1; i < cells.length; i++) {
         cells[i] = numberOf(cells[i]);
         if (present(cells[i]) && (typeof cells[i] !== "number" || !Number.isFinite(cells[i]) || cells[i] < 0)) {
@@ -136,11 +198,18 @@ export function parseSupplement(workbook, source, fileName, importedAt = new Dat
       const sum = cells.slice(1, 5).reduce((total, value) => total + (value || 0), 0);
       if (cells.slice(1, 5).some((value) => !present(value))) warnings.push(`Linha ${n}: há fornecedor sem quantidade salva. Campos vazios não entram nas somas.`);
       if (!present(cells[5]) || Math.abs(sum - cells[5]) > 0.000001) warnings.push(`Linha ${n}: o TOTAL salvo difere da soma dos fornecedores ou está vazio. O dashboard usa a soma das colunas de fornecedores.`);
-    } else {
-      for (let i = 0; i < cells.length; i++) if (cells[i] !== null) cells[i] = String(cells[i]);
-    }
-    records.push({ id: `${source}:${n}`, kind: source, cells, source_sheet: sheet.name, source_row: n });
-  });
+      const period = {};
+      for (const [name, i] of [["weekStart", 6], ["weekEnd", 7]]) {
+        if (layout.indices[i] === null) continue;
+        period[name] = present(values[i]) ? String(dateOf(values[i], workbook.properties.date1904)) : null;
+        if (present(period[name]) && !validDate(period[name])) warnings.push(`${sheet.name}, linha ${n}: data de ${i === 6 ? "início" : "fim"} não interpretável, preservada para consulta.`);
+      }
+      records.push({ id: `${source}:${n}`, kind: source, cells, source_sheet: sheet.name, source_row: n, ...period });
+    });
+  } else {
+    records = taxonomyRows(sheet || complete, config);
+    if (sheet && complete) records = mergeTaxonomy(records, taxonomyRows(complete, config), config.headers, warnings);
+  }
   if (source === "taxonomy") {
     const noteSheet = workbook.worksheets.find((s) => normalized(s.name) === "fontes e notas");
     if (noteSheet) {

@@ -18,7 +18,8 @@ export function validateDataset(data, source = "operations") {
       Array.isArray(data.records) && data.records.every((row) => row?.kind === source && typeof row.id === "string" &&
         Array.isArray(row.cells) && row.cells.length === config.headers.length && row.cells.every(scalar) &&
         typeof row.cells[0] === "string" &&
-        (source !== "weekly" || row.cells.slice(1).every((v) => v === null || (typeof v === "number" && v >= 0))));
+        (source !== "weekly" || (row.cells.slice(1).every((v) => v === null || (typeof v === "number" && v >= 0)) &&
+          [row.weekStart, row.weekEnd].every((v) => v === undefined || v === null || typeof v === "string"))));
     if (!valid) throw Error("Os dados locais estão inválidos ou são de outra versão. Importe novamente a planilha Excel.");
     return data;
   }

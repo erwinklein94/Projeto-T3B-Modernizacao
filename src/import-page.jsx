@@ -20,7 +20,7 @@ function ImportCard({ source, dataset, busySource, onImport, onClear, onNavigate
   return <article className="panel import-card" aria-labelledby={`source-${source.id}`}>
     <div className="import-card-title"><Upload size={23} /><h2 id={`source-${source.id}`}>{source.title}</h2></div>
     <p>{source.description}</p>
-    <p className="import-file-pattern">{source.id === "operations" ? "Planilha completa de controle de dormentes (.xlsx)." : `Planilha .xlsx com a aba “${source.sheet}” e as colunas originais.`}</p>
+    <p className="import-file-pattern">{source.id === "operations" ? "Planilha completa de controle de dormentes (.xlsx)." : source.id === "weekly" ? "Planilha .xlsx com a aba “Recebimento Semanal”. Aceita Início e Fim; as colunas são reconhecidas pelo nome." : "Planilha .xlsx com a aba “Espécies” (quatro ou oito colunas) e/ou “Especies.Completo”. As informações são reunidas pelo nome científico."}</p>
     <label className="sr-only" htmlFor={`file-${source.id}`}>{source.title}</label>
     <input id={`file-${source.id}`} ref={input} type="file" accept=".xlsx" hidden disabled={Boolean(busySource)}
       onChange={(event) => onImport(event, source.id)} />
