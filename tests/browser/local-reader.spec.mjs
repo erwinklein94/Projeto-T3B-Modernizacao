@@ -26,16 +26,16 @@ test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem envia
   await expect(page.locator("input[type=file]")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Novo registro" })).toHaveCount(0);
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
-  await expect(received(page)).toHaveText("10,5");
+  await expect(received(page)).toHaveText("11");
   await page.getByLabel("Data inicial", { exact: true }).fill("2026-06-21");
   await expect(received(page)).toHaveText("0");
   await page.getByRole("button", { name: "Limpar", exact: true }).click();
-  await expect(received(page)).toHaveText("10,5");
+  await expect(received(page)).toHaveText("11");
   await page.reload();
-  await expect(received(page)).toHaveText("10,5");
+  await expect(received(page)).toHaveText("11");
   const otherTab = await context.newPage();
   await otherTab.goto("./");
-  await expect(received(otherTab)).toHaveText("10,5");
+  await expect(received(otherTab)).toHaveText("11");
   await records(page).click();
   await upload(page, await filePayload(fixture(20), "atualizada.xlsx"));
   await expect(page.getByText("Planilha: atualizada.xlsx", { exact: true })).toBeVisible();
@@ -71,7 +71,7 @@ test("Falha na gravação e colunas inválidas mantêm a base anterior", async (
   await expect(page.getByRole("alert")).toContainText("Os dados anteriores foram mantidos");
   await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
   await page.reload();
-  await expect(received(page)).toHaveText("10,5");
+  await expect(received(page)).toHaveText("11");
 });
 
 test("Navegador independente abre vazio e armazenamento corrompido permite nova importação", async ({ page, browser }) => {

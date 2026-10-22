@@ -7,6 +7,7 @@ export const norm = (v) =>
 export const num = (v) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 export const fmt = (n, d = 2) =>
   new Intl.NumberFormat("pt-BR", { maximumFractionDigits: d }).format(num(n));
+export const fmtQuantity = (n) => fmt(n, 0);
 export const validDate = (v) =>
   typeof v === "string" &&
   /^\d{4}-\d{2}-\d{2}$/.test(v) &&
@@ -106,6 +107,7 @@ export function summarize(records, filters = emptyFilters) {
     moves = selected.filter((r) => r.kind === "movimentacoes"),
     damages = selected.filter((r) => r.kind === "danificados");
   const suppliers = new Map(),
+    receivedSpecies = new Map(),
     species = new Map(),
     months = new Map(),
     composition = new Map();
@@ -113,6 +115,10 @@ export function summarize(records, filters = emptyFilters) {
     const supplier = String(c[4] || "Não informado").trim(),
       sp = String(c[8] || "Não informada").trim(),
       q = num(c[9]);
+    const speciesKey = norm(sp);
+    const entry = receivedSpecies.get(speciesKey) || { name: sp, value: 0 };
+    entry.value += q;
+    receivedSpecies.set(speciesKey, entry);
     suppliers.set(supplier, (suppliers.get(supplier) || 0) + q);
     const key = supplier + "|" + sp;
     composition.set(key, (composition.get(key) || 0) + q);
@@ -136,6 +142,7 @@ export function summarize(records, filters = emptyFilters) {
     receipts,
     moves,
     damages,
+    receivedSpecies: [...receivedSpecies.values()].sort((a, b) => b.value - a.value || a.name.localeCompare(b.name, "pt-BR")),
     suppliers: [...suppliers].sort((a, b) => b[1] - a[1]),
     species: [...species.values()].sort((a, b) => b.in - a.in),
     months: [...months].sort(),

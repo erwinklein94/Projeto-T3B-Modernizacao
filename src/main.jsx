@@ -31,6 +31,7 @@ import {
   emptyFilters,
   fields,
   fmt,
+  fmtQuantity,
   dateText,
   norm,
   num,
@@ -40,7 +41,8 @@ import {
   summarize,
   filterDescription,
 } from "./domain.mjs";
-import { DashboardCharts } from "./charts";
+import { DashboardCharts, ReceiptSpecies } from "./charts";
+import { speciesNames } from "./species-reference.mjs";
 import { exportExcel, exportPDF } from "./exports";
 import "./style.css";
 const labels = { dashboard: "Dashboard", records: "Registros", insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title };
@@ -220,6 +222,7 @@ function App() {
   }, [kind, regFilter]);
   const navigate = (p) => setPage(p);
   const summary = useMemo(() => summarize(records, filter), [records, filter]);
+  const names = useMemo(() => speciesNames(records, datasets.taxonomy?.records), [records, datasets.taxonomy]);
   const idx = useMemo(() => supplierIndex(records), [records]);
   const rows = useMemo(
     () => records.filter((r) => r.kind === kind && matches(r, regFilter, idx)),
@@ -249,7 +252,7 @@ function App() {
           disabled={exporting || loading || !dataset}
           onClick={() =>
             runExport(async () => {
-              await exportPDF(summary, filter);
+              await exportPDF(summary, filter, names);
             })
           }
         >
@@ -293,34 +296,24 @@ function App() {
               {label}
               <Icon size={18} />
             </div>
-            <strong>{fmt(value, 2)}</strong>
+            <strong>{fmtQuantity(value)}</strong>
             <small>{caption}</small>
           </article>
         ))}
       </div>
+      <ReceiptSpecies summary={summary} names={names} dark={dark} filterText={filterDescription(filter)} />
       <div className="section-heading">
         <div>
           <h2>Panorama da operação</h2>
           <p>Informação para acompanhar cada etapa.</p>
         </div>
-        <label className="inline-select">
-          Detalhar fornecedor
-          <select
-            value={focusSupplier}
-            onChange={(e) => setFocusSupplier(e.target.value)}
-          >
-            <option value="">Maior recebimento</option>
-            {summary.suppliers.map(([s]) => (
-              <option key={s}>{s}</option>
-            ))}
-          </select>
-        </label>
       </div>
       <DashboardCharts
         summary={summary}
         filterText={filterDescription(filter)}
         dark={dark}
         focusSupplier={focusSupplier}
+        onFocusSupplier={setFocusSupplier}
       />
       <div className="lower-grid">
         <article className="panel">
@@ -330,7 +323,7 @@ function App() {
           </div>
           <div className="damage-total">
             <AlertTriangle size={25} />
-            <strong>{fmt(summary.damaged)}</strong>
+            <strong>{fmtQuantity(summary.damaged)}</strong>
             <span>unidades pendentes</span>
           </div>
           <div className="table-wrap">
@@ -348,8 +341,8 @@ function App() {
                   <tr key={i}>
                     <td>{r.cells[6] || "Não identificado"}</td>
                     <td>{dateText(r.cells[1])}</td>
-                    <td>{fmt(r.cells[9])}</td>
-                    <td>{fmt(num(r.cells[9]) - num(r.cells[15]))}</td>
+                    <td>{fmtQuantity(r.cells[9])}</td>
+                    <td>{fmtQuantity(num(r.cells[9]) - num(r.cells[15]))}</td>
                   </tr>
                 ))}
               </tbody>
@@ -667,7 +660,7 @@ function HistoricalTables({ records, filters, defById }) {
                     <tr key={i}>
                       {r.cells.map((c, j) => (
                         <td key={j}>
-                          {typeof c === "number" ? fmt(c) : String(c ?? "—")}
+                          {typeof c === "number" ? fmtQuantity(c) : String(c ?? "—")}
                         </td>
                       ))}
                     </tr>

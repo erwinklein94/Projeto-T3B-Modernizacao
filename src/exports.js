@@ -1,4 +1,4 @@
-import { dateText, filterDescription, fmt, validDate } from "./domain.mjs";
+import { dateText, filterDescription, fmt, fmtQuantity, norm, validDate } from "./domain.mjs";
 export async function exportExcel(def, rows) {
   const { default: ExcelJS } = await import("exceljs");
   const wb = new ExcelJS.Workbook();
@@ -45,7 +45,7 @@ function download(data, name, type) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
-export async function exportPDF(summary, filters) {
+export async function exportPDF(summary, filters, names = new Map()) {
   const [{ jsPDF }, echarts] = await Promise.all([
     import("jspdf"),
     import("echarts"),
@@ -94,12 +94,12 @@ export async function exportPDF(summary, filters) {
     doc.text(label, x + 7, y + 11);
     doc.setTextColor("#003865");
     doc.setFontSize(23);
-    doc.text(fmt(value, 4), x + 7, y + 27);
+    doc.text(fmt(value, label.includes("m³") ? 4 : 0), x + 7, y + 27);
   });
   doc.setFontSize(9);
   doc.setTextColor("#526574");
   doc.text(
-    "Saldo = entradas menos saídas no período filtrado. Valores históricos preservados, incluindo frações.",
+    "Saldo = entradas menos saídas no período filtrado. Quantidades arredondadas na exibição; volumes mantêm as casas decimais.",
     12,
     163,
   );
@@ -126,20 +126,30 @@ export async function exportPDF(summary, filters) {
   }
   const tables = [
     [
+      "Resumo de recebimentos por espécie",
+      ["Nome popular", "Nome científico", "Entrada (un.)", "% total"],
+      [...summary.receivedSpecies.map((v) => [
+        names.get(norm(v.name)) || "Não informado",
+        v.name,
+        fmtQuantity(v.value),
+        summary.received > 0 && summary.receivedSpecies.every((r) => r.value >= 0) ? `${fmtQuantity(v.value / summary.received * 100)}%` : "—",
+      ]), ["TOTAL", "", fmtQuantity(summary.received), summary.received > 0 && summary.receivedSpecies.every((r) => r.value >= 0) ? "100%" : "—"]],
+    ],
+    [
       "Estoque por espécie",
       ["Espécie", "Entrada", "Saída", "Saldo", "m³"],
       summary.species.map((v) => [
         v.name,
-        fmt(v.in, 4),
-        fmt(v.out, 4),
-        fmt(v.balance, 4),
+        fmtQuantity(v.in),
+        fmtQuantity(v.out),
+        fmtQuantity(v.balance),
         fmt(v.volume, 4),
       ]),
     ],
     [
       "Recebimentos por fornecedor",
       ["Fornecedor", "Recebidos"],
-      summary.suppliers.map(([n, v]) => [n, fmt(v, 4)]),
+      summary.suppliers.map(([n, v]) => [n, fmtQuantity(v)]),
     ],
     [
       "Danificados no período",
@@ -147,9 +157,9 @@ export async function exportPDF(summary, filters) {
       summary.damages.map((r) => [
         String(r.cells[6] || "Não informado"),
         dateText(r.cells[1]),
-        fmt(r.cells[9]),
-        fmt(r.cells[15]),
-        fmt((r.cells[9] || 0) - (r.cells[15] || 0)),
+        fmtQuantity(r.cells[9]),
+        fmtQuantity(r.cells[15]),
+        fmtQuantity((r.cells[9] || 0) - (r.cells[15] || 0)),
       ]),
     ],
   ];
@@ -158,7 +168,7 @@ export async function exportPDF(summary, filters) {
       doc.addPage();
       header(title);
       let y = 57;
-      const widths = columns.length === 2 ? [200, 73] : [99, 51, 41, 41, 41];
+      const widths = columns.length === 2 ? [200, 73] : columns.length === 4 ? [68, 121, 48, 36] : [99, 51, 41, 41, 41];
       const positions = widths.map(
         (_, i) => 12 + widths.slice(0, i).reduce((a, b) => a + b, 0),
       );

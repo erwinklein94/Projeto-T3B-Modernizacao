@@ -6,7 +6,10 @@ import {
   emptyFilters,
   supplierIndex,
   recalculate,
+  fmt,
+  fmtQuantity,
 } from "../src/domain.mjs";
+import { speciesNames } from "../src/species-reference.mjs";
 const receipt = {
   kind: "recebimentos",
   cells: [
@@ -89,4 +92,32 @@ test("Volume interno respeita dimensão selecionada e arredondamento", () => {
   const c = recalculate("recebimentos", receipt.cells, 0.105);
   assert.equal(c[11], 1.1025);
   assert.equal(receipt.cells[11], 1.1991);
+});
+
+test("Resumo por espécie soma recebimentos sem duplicar movimentos e aplica os filtros", () => {
+  const other = { ...receipt, cells: [...receipt.cells] };
+  Object.assign(other.cells, { 1: "2026-06-21", 4: "Fornecedor B", 8: " Espécie A ", 9: 3.25 });
+  const second = { ...receipt, cells: [...receipt.cells] };
+  Object.assign(second.cells, { 8: "Espécie B", 9: 0.75 });
+  const all = summarize([receipt, other, second, move]);
+  assert.deepEqual(all.receivedSpecies, [{ name: "Espécie A", value: 13.75 }, { name: "Espécie B", value: 0.75 }]);
+  assert.equal(all.receivedSpecies.reduce((total, r) => total + r.value, 0), all.received);
+  assert.equal(summarize([receipt, other, second, move], { ...emptyFilters, supplier: "Fornecedor B" }).receivedSpecies[0].value, 3.25);
+  assert.equal(summarize([receipt, other], { ...emptyFilters, end: "2026-06-20" }).receivedSpecies[0].value, 10.5);
+  assert.deepEqual(summarize([receipt], { ...emptyFilters, species: "inexistente" }).receivedSpecies, []);
+});
+
+test("Arredondamento é somente de apresentação e preserva decimais do volume", () => {
+  assert.equal(fmtQuantity(1234.75), "1.235");
+  assert.equal(fmtQuantity(-2.25), "-2");
+  assert.equal(fmt(1.1991, 4), "1,1991");
+  assert.equal(summarize([receipt, move]).balance, 8.25);
+});
+
+test("Nomes do catálogo prevalecem sobre propriedades e referência, sem inventar nomes desconhecidos", () => {
+  const names = speciesNames([{ kind: "madeiras", cells: [" Qualea albiflora ", "Nome da madeira"] }], [{ cells: ["Qualea albiflora", "Nome do catálogo"] }]);
+  assert.equal(names.get("qualea albiflora"), "Nome do catálogo");
+  assert.equal(names.get("dialium guianense"), "Guariúba");
+  assert.equal(names.has("especie desconhecida"), false);
+  assert.equal(speciesNames().get("qualea albiflora"), "Cambará");
 });

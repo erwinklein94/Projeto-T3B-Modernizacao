@@ -1,0 +1,61 @@
+import { test, expect } from "@playwright/test";
+import { fixture, filePayload } from "../workbook-fixture.mjs";
+
+test("Pizza, resumo e fornecedor acompanham a importação e os filtros, arredondando só a exibição", async ({ page }) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const workbook = fixture();
+  const receipts = workbook.getWorksheet("Recebimentos");
+  receipts.getCell("I5").value = "Qualea albiflora";
+  workbook.getWorksheet("Movimentacoes").getCell("F5").value = "Qualea albiflora";
+  const second = [...receipts.getRow(5).values.slice(1)];
+  Object.assign(second, { 1: new Date("2026-06-21T00:00:00Z"), 3: "L2", 4: "Fornecedor B", 8: "Dialium guianense", 9: 4.25 });
+  receipts.addRow(second);
+  await page.goto("./");
+  await page.getByRole("button", { name: "Inserir dados", exact: true }).click();
+  await page.getByLabel("Controle Dormentes Volume Espécies Jales", { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(workbook));
+  await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  const summary = page.locator(".species-summary");
+  await expect(summary.getByRole("row").filter({ hasText: "Cambará" })).toContainText("11");
+  await expect(summary.getByRole("row").filter({ hasText: "Guariúba" })).toContainText("29%");
+  await expect(summary.locator("tfoot")).toContainText("15100%");
+  await expect(page.getByText("Período: 20/06/2026 até 21/06/2026", { exact: true })).toBeVisible();
+  await expect(page.locator(".kpi").filter({ hasText: "Recebidos" }).locator("strong")).toHaveText("15");
+  await expect(page.locator(".kpi").filter({ hasText: "Saldo do período" })).toContainText("0,9491 m³");
+
+  await page.getByRole("button", { name: "Ampliar Participação por espécie", exact: true }).click();
+  const detail = page.getByRole("dialog");
+  await expect(detail).toContainText("Cambará (Qualea albiflora)");
+  await expect(detail).toContainText("Guariúba (Dialium guianense)");
+  await expect(detail.locator("tbody tr")).toHaveCount(2);
+  await page.getByRole("button", { name: "Fechar detalhes do gráfico" }).click();
+
+  const supplier = page.getByLabel("Fornecedor do gráfico de espécies", { exact: true });
+  await expect(supplier).toHaveValue("Fornecedor A");
+  await supplier.selectOption("Fornecedor B");
+  await expect(page.getByRole("heading", { name: "Espécies · Fornecedor B", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Ampliar Espécies · Fornecedor B", exact: true }).click();
+  await expect(detail.locator("tbody")).toContainText("Dialium guianense");
+  await expect(detail.locator("tbody")).not.toContainText("Qualea albiflora");
+  await expect(detail.locator("tbody td").first()).toHaveText("4");
+  await page.getByRole("button", { name: "Fechar detalhes do gráfico" }).click();
+  await expect(summary.locator("tfoot td").first()).toHaveText("15");
+
+  await page.getByLabel("Data final", { exact: true }).fill("2026-06-20");
+  await expect(supplier).toHaveValue("Fornecedor A");
+  await expect(page.getByRole("heading", { name: "Espécies · Fornecedor A", exact: true })).toBeVisible();
+  await expect(summary.locator("tbody tr")).toHaveCount(1);
+  await expect(summary.locator("tfoot td").first()).toHaveText("11");
+  await page.getByLabel("Data inicial", { exact: true }).fill("2026-06-22");
+  await expect(summary.getByText("Nenhum recebimento encontrado.", { exact: true })).toBeVisible();
+  await expect(supplier).toBeDisabled();
+  await page.getByRole("button", { name: "Limpar", exact: true }).click();
+  await page.getByRole("button", { name: "Ativar tema escuro", exact: true }).click();
+  await expect(summary.locator("tbody tr")).toHaveCount(2);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Registros", exact: true }).click();
+  await expect(page.getByRole("cell", { name: "10,5", exact: true })).toBeVisible();
+  expect(errors).toEqual([]);
+});

@@ -455,6 +455,25 @@ main {
 .charts-grid > .wide {
   grid-column: 1/-1;
 }
+.species-overview {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+.species-overview > *, .charts-grid > * { min-width: 0; }
+.species-summary .table-title { background: #003865; color: white; border-radius: 10px 10px 0 0; }
+.species-summary .table-title span { color: inherit; }
+.species-summary caption { text-align: left; padding: 12px; color: var(--muted); font-size: 10px; }
+.species-summary th, .species-summary td { min-width: 0; padding: 5px 8px; white-space: normal; overflow-wrap: anywhere; }
+.species-summary th:nth-child(n+3), .species-summary td:nth-child(n+3), .species-summary tfoot td { text-align: right; white-space: nowrap; }
+.species-summary tbody tr:nth-child(odd) { background: var(--bg); }
+.species-summary tfoot th, .species-summary tfoot td { background: #003865; color: white; font-weight: bold; }
+.species-swatch { display: inline-block; width: 9px; height: 9px; margin-right: 7px; flex-shrink: 0; }
+.chart-controls { padding: 8px 10px; }
+.chart-controls .inline-select { display: flex; flex-wrap: wrap; font-size: 11px; }
+.chart-controls select { width: min(100%, 240px); font-size: 12px; }
+@media (max-width: 1250px) { .species-overview { grid-template-columns: minmax(0, 1fr); } }
 .panel-heading {
   padding: 22px 22px 5px;
 }

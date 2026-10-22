@@ -31,6 +31,10 @@ Abas opcionais: `Danif.`, `Recebimento Semanal` e `Propriedades da Madeira`. Aba
 
 Exportações de consulta para Excel e PDF, detalhes dos gráficos, apresentação e temas continuam disponíveis.
 
+O dashboard operacional inclui uma pizza de participação e o resumo de recebimentos por espécie, com nome popular, nome científico, entrada em unidades e percentual. Ambos usam a aba `Recebimentos` e os filtros do dashboard, sem somar movimentações novamente. Nomes populares usam primeiro o catálogo taxonômico importado, depois a aba opcional `Propriedades da Madeira` e, por fim, a correspondência da imagem de referência; espécies sem correspondência exibem `Não informado`. Essa correspondência é apenas de apresentação e não altera os nomes científicos importados. Nenhuma quantidade da imagem é utilizada.
+
+Quantidades e percentuais no dashboard operacional e no PDF são arredondados para inteiros somente na exibição; volumes em m³ mantêm até quatro casas decimais. As somas usam os valores originais, por isso valores arredondados podem não fechar exatamente o total exibido. Registros e exportação Excel preservam a precisão original. O gráfico `Espécies · Fornecedor` tem seu próprio seletor de fornecedor, atualizando dados e título dentro dos filtros gerais; ao excluir o fornecedor selecionado por um filtro, mostra o fornecedor de maior recebimento disponível.
+
 ## Novas planilhas e dashboards
 
 **Controle Semanal Recebimentos por Fornecedor:** aba `Recebimento Semanal`, com `Semana`, `Pandolfi`, `Granoski`, `Três Guri`, `Madebel` e `TOTAL`. O painel mostra quantidades por semana e fornecedor, participação, indicadores e tabela de consulta, com filtros de semana e fornecedor. Os totais são recalculados pelas colunas dos fornecedores, sem incluir a linha TOTAL. Divergências com o total salvo geram avisos. Este controle é independente do saldo operacional.

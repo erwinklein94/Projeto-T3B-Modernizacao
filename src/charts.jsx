@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useId } from "react";
 import * as echarts from "echarts";
-import { fmt } from "./domain.mjs";
+import { fmt, fmtQuantity, norm, validDate, dateText } from "./domain.mjs";
 import { chartDetails } from "./chart-details.mjs";
 export const palette = [
   "#003865",
@@ -12,7 +12,7 @@ export const palette = [
   "#BDCCD4",
   "#FBD300",
 ];
-function ChartCanvas({ title, option, height, dark, onSelect }) {
+function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
   const el = useRef();
   const select = useRef(onSelect);
   select.current = onSelect;
@@ -21,7 +21,8 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
     const ink = dark ? "#dce8ee" : "#526574";
     const axisTheme = (axis) => ({
       ...axis,
-      axisLabel: { ...axis.axisLabel, color: ink },
+      ...(axis.type === "value" && decimals === 0 ? { minInterval: 1 } : {}),
+      axisLabel: { ...(axis.type === "value" ? { formatter: (v) => fmt(v, decimals) } : {}), ...axis.axisLabel, color: ink },
     });
     chart.setOption({
       animation: false,
@@ -30,14 +31,15 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
       tooltip: {
         trigger: "axis",
         confine: true,
-        valueFormatter: (v) => fmt(v),
+        valueFormatter: (v) => fmt(v, decimals),
+        ...option.tooltip,
       },
-      ...option,
+      ...Object.fromEntries(Object.entries(option).filter(([key]) => key !== "tooltip")),
       legend: { ...option.legend, textStyle: { color: ink } },
       ...(option.xAxis ? { xAxis: axisTheme(option.xAxis) } : {}),
       ...(option.yAxis ? { yAxis: axisTheme(option.yAxis) } : {}),
       series: option.series.map((s) => s.type === "pie"
-        ? { ...s, label: { ...s.label, color: ink, textBorderWidth: 0 } }
+        ? { ...s, label: { color: ink, textBorderWidth: 0, ...s.label } }
         : s),
     });
     chart.on("click", (event) => {
@@ -54,10 +56,10 @@ function ChartCanvas({ title, option, height, dark, onSelect }) {
       ro.disconnect();
       chart.dispose();
     };
-  }, [option, dark]);
+  }, [option, dark, decimals]);
   return <div ref={el} style={{ height }} role="img" aria-label={title} />;
 }
-export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", note = "Quantidades em unidades, preservando as frações do histórico. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
+export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", decimals = 2, controls, note = "Quantidades em unidades. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
   const [detail, setDetail] = useState(null);
   const dialog = useRef();
   const opener = useRef();
@@ -95,7 +97,8 @@ export function Chart({ title, subtitle, option, height = 300, dark = false, fil
           Ampliar e detalhar ↗
         </button>
       </div>
-      <ChartCanvas title={title} option={option} height={height} dark={dark} onSelect={open} />
+      {controls && <div className="chart-controls">{controls}</div>}
+      <ChartCanvas title={title} option={option} height={height} dark={dark} decimals={decimals} onSelect={open} />
       {detail && (
         <dialog ref={dialog} className="chart-dialog" aria-labelledby={headingId}
           onCancel={() => setDetail(null)} onClose={() => setDetail(null)}
@@ -108,19 +111,19 @@ export function Chart({ title, subtitle, option, height = 300, dark = false, fil
             <p className="chart-filter-context">Filtros do dashboard: {filterText || "Todo o histórico"}</p>
             <ChartCanvas title={`${title} ampliado`} option={expanded}
               height={Math.max(360, option.yAxis?.type === "category" ? rows.length * 28 + 65 : 440)}
-              dark={dark} onSelect={open} />
+              dark={dark} decimals={decimals} onSelect={open} />
             <div className="chart-detail-selection">
               <h3>{selected ? `Detalhes: ${selected.label}` : "Detalhamento completo"}</h3>
               {selected && <button onClick={() => open()}>Mostrar todas as categorias</button>}
             </div>
             <p>Clique em uma barra ou fatia para consultar sua contribuição. Os totais abaixo respeitam os filtros do dashboard.</p>
             <div className="chart-detail-metrics">
-              {columns.map((name, i) => <div key={`${name}-${i}`}><span>{name} · total do gráfico</span><strong>{fmt(totals[i], 4)}</strong></div>)}
+              {columns.map((name, i) => <div key={`${name}-${i}`}><span>{name} · total do gráfico</span><strong>{fmt(totals[i], decimals)}</strong></div>)}
             </div>
             <div className="chart-detail-table">
               <table>
                 <thead><tr><th>Categoria</th>{columns.map((name, i) => <React.Fragment key={i}><th>{name} ({unit})</th><th>% do total de {name}</th></React.Fragment>)}</tr></thead>
-                <tbody>{visible.map((row) => <tr key={row.label}><th scope="row">{row.label}</th>{row.values.map((value, i) => <React.Fragment key={i}><td>{fmt(value, 4)}</td><td>{totals[i] > 0 && value >= 0 ? `${fmt(value / totals[i] * 100)}%` : "—"}</td></React.Fragment>)}</tr>)}</tbody>
+                <tbody>{visible.map((row) => <tr key={row.label}><th scope="row">{row.label}</th>{row.values.map((value, i) => <React.Fragment key={i}><td>{fmt(value, decimals)}</td><td>{totals[i] > 0 && value >= 0 ? `${fmt(value / totals[i] * 100, decimals)}%` : "—"}</td></React.Fragment>)}</tr>)}</tbody>
               </table>
               {!rows.length && <p>Não há dados para os filtros selecionados.</p>}
             </div>
@@ -149,9 +152,39 @@ export const bar = (labels, series) => ({
   yAxis: { type: "value", splitLine: { lineStyle: { color: "#bdccd433" } } },
   series: series.map((s) => ({ type: "bar", barMaxWidth: 32, ...s })),
 });
-export function DashboardCharts({ summary: s, dark, focusSupplier, filterText }) {
+const OperationChart = (props) => <Chart decimals={0} note="Quantidades e percentuais arredondados apenas na exibição. Cálculos e dados originais preservam as frações. Saldo representa entradas menos saídas no período." {...props} />;
+
+export function ReceiptSpecies({ summary, names, dark, filterText }) {
+  const entries = summary.receivedSpecies;
+  const dates = summary.receipts.map((r) => r.cells[1]).filter(validDate).sort();
+  const colors = ["#32a6d5", "#102e50", "#24713d", "#179f99", "#d22f70", "#90bf47", "#8055b7", "#f5a34c", "#56b3b0", "#306780", "#315d39", "#63899d", "#9c7953", "#baa26e", "#a35927", "#c3a32b", "#5e3f8e", "#e5c9a6", "#444444", "#d58c16"];
+  const rows = entries.map((entry, i) => ({ ...entry, popular: names.get(norm(entry.name)) || "Não informado", color: colors[i] || `hsl(${i * 137.508 % 360}, 45%, 42%)` }));
+  const validPercent = summary.received > 0 && rows.every((r) => r.value >= 0);
+  return <section className="receipt-species" aria-label="Recebimentos por espécie">
+    <div className="section-heading"><div><h2>Recebimentos de dormentes por espécie</h2><p>{dates.length ? `Período: ${dateText(dates[0])} até ${dateText(dates.at(-1))}` : "Nenhuma data válida no filtro"}</p></div></div>
+    <div className="species-overview">
+      <OperationChart title="Participação por espécie" subtitle="Recebimentos em unidades · todas as espécies do filtro" dark={dark} filterText={filterText} height={Math.max(360, Math.min(680, rows.length * 19))}
+        option={{ tooltip: { trigger: "item" }, legend: { show: false }, series: [{ name: "Recebidos", type: "pie", radius: "85%", center: ["50%", "50%"],
+          label: { position: "inside", color: "#ffffff", fontWeight: "bold", formatter: ({ value }) => value / summary.received * 100 >= 1.5 ? `${fmtQuantity(value / summary.received * 100)}%` : "" },
+          itemStyle: { borderColor: dark ? "#132c3c" : "#ffffff", borderWidth: 1 },
+          data: validPercent ? rows.filter((r) => r.value > 0).map((r) => ({ name: r.popular === "Não informado" ? r.name : `${r.popular} (${r.name})`, value: r.value, itemStyle: { color: r.color } })) : [] }] }} />
+      <article className="panel species-summary">
+        <div className="table-title"><h3>Resumo por espécie</h3><span>{rows.length} espécies</span></div>
+        <div className="table-wrap"><table><caption>Quantidades da aba Recebimentos no filtro selecionado</caption><thead><tr><th>Nome popular</th><th>Nome científico</th><th>Entrada (un.)</th><th>% total</th></tr></thead>
+          <tbody>{rows.map((r) => <tr key={r.name}><td><span className="species-swatch" style={{ background: r.color }} />{r.popular}</td><td><i>{r.name}</i></td><td>{fmtQuantity(r.value)}</td><td>{validPercent ? `${fmtQuantity(r.value / summary.received * 100)}%` : "—"}</td></tr>)}</tbody>
+          <tfoot><tr><th colSpan={2}>Total</th><td>{fmtQuantity(summary.received)}</td><td>{validPercent ? "100%" : "—"}</td></tr></tfoot>
+        </table></div>
+        {!rows.length && <p className="empty">Nenhum recebimento encontrado.</p>}
+      </article>
+    </div>
+    <p className="footnote">Percentuais calculados sobre o total de recebimentos do filtro. Quantidades e percentuais arredondados apenas na exibição; a soma dos valores exibidos pode diferir do total. Nomes populares: catálogo importado, propriedades da madeira ou imagem de referência; nomes sem correspondência ficam como “Não informado”.</p>
+    {!validPercent && rows.length > 0 && <p className="notice">A participação não está disponível para quantidades negativas ou total não positivo.</p>}
+  </section>;
+}
+
+export function DashboardCharts({ summary: s, dark, focusSupplier, onFocusSupplier, filterText }) {
   const species = s.species;
-  const chosen = focusSupplier || s.suppliers[0]?.[0];
+  const chosen = s.suppliers.some(([name]) => name === focusSupplier) ? focusSupplier : s.suppliers[0]?.[0];
   const comp = s.composition
     .filter(([k]) => k.startsWith(chosen + "|"))
     .map(([k, v]) => [k.split("|")[1], v])
@@ -159,7 +192,7 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
   const allSpecies = [...new Set(s.composition.map(([k]) => k.split("|")[1]))];
   return (
     <div className="charts-grid">
-      <Chart
+      <OperationChart
         title="Recebimentos por mês"
         subtitle="Evolução do volume recebido · unidades"
         dark={dark}
@@ -179,7 +212,7 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
                   color: dark ? "#dce8ee" : "#003865",
                   fontSize: 11,
                   fontWeight: "bold",
-                  formatter: ({ value }) => fmt(value, 2),
+                  formatter: ({ value }) => fmtQuantity(value),
                 },
               },
             ],
@@ -187,27 +220,27 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
           grid: { left: 55, right: 25, top: 65, bottom: 85 },
         }}
       />
-      <Chart
+      <OperationChart
         title="Participação dos fornecedores"
         subtitle="Distribuição dos recebimentos no período"
         dark={dark}
         filterText={filterText}
         option={{
-          tooltip: { trigger: "item", valueFormatter: (v) => fmt(v) },
+          tooltip: { trigger: "item" },
           legend: { bottom: 0, type: "scroll" },
           series: [
             {
               type: "pie",
               radius: ["43%", "67%"],
               center: ["50%", "44%"],
-              label: { formatter: "{d}%", fontSize: 12 },
+              label: { formatter: ({ value }) => s.received > 0 ? `${fmtQuantity(value / s.received * 100)}%` : "", fontSize: 12 },
               data: s.suppliers.map(([name, value]) => ({ name, value })),
             },
           ],
         }}
       />
       <div className="wide">
-        <Chart
+        <OperationChart
           title="Entradas, saídas e saldo por espécie"
           subtitle="Movimentações de estoque · saldo do período selecionado"
           dark={dark}
@@ -242,7 +275,7 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
           }}
         />
       </div>
-      <Chart
+      <OperationChart
         title="Fornecedor × espécie"
         subtitle="Composição dos recebimentos · unidades"
         dark={dark}
@@ -264,11 +297,15 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
           legend: { show: false },
         }}
       />
-      <Chart
+      <OperationChart
         title={`Espécies · ${chosen || "Fornecedor"}`}
-        subtitle="Selecione um fornecedor acima para detalhar"
+        subtitle="Recebimentos por espécie do fornecedor selecionado · unidades"
+        controls={<label className="inline-select">Fornecedor do gráfico<select aria-label="Fornecedor do gráfico de espécies" value={chosen || ""} onChange={(e) => onFocusSupplier(e.target.value)} disabled={!s.suppliers.length}>
+          {!s.suppliers.length && <option value="">Nenhum fornecedor</option>}
+          {s.suppliers.map(([name]) => <option key={name} value={name}>{name}</option>)}
+        </select></label>}
         dark={dark}
-        filterText={filterText}
+        filterText={[filterText, chosen].filter(Boolean).join(" · ")}
         height={380}
         option={{
           grid: { left: 160, right: 85, top: 15, bottom: 30 },
@@ -302,7 +339,7 @@ export function DashboardCharts({ summary: s, dark, focusSupplier, filterText })
                 distance: 5,
                 color: dark ? "#dce8ee" : "#003865",
                 fontSize: 10,
-                formatter: ({ value }) => fmt(value, 2),
+                formatter: ({ value }) => fmtQuantity(value),
               },
             },
           ],
