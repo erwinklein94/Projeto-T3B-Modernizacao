@@ -20,7 +20,7 @@ function ImportCard({ source, dataset, busySource, onImport, onClear, onNavigate
   return <article className="panel import-card" aria-labelledby={`source-${source.id}`}>
     <div className="import-card-title"><Upload size={23} /><h2 id={`source-${source.id}`}>{source.title}</h2></div>
     <p>{source.description}</p>
-    <p className="import-file-pattern">{source.id === "operations" ? "Planilha completa de controle de dormentes (.xlsx)." : source.id === "weekly" ? "Planilha .xlsx com a aba “Recebimento Semanal”. Aceita Início e Fim; as colunas são reconhecidas pelo nome." : "Planilha .xlsx com a aba “Espécies” (quatro ou oito colunas) e/ou “Especies.Completo”. As informações são reunidas pelo nome científico."}</p>
+    <p className="import-file-pattern">{source.id === "operations" ? "Planilha completa de controle de dormentes (.xlsx)." : source.id === "weekly" ? "Planilha .xlsx com a aba “Recebimento Semanal”. Aceita Início e Fim; as colunas são reconhecidas pelo nome." : source.id === "wood" ? "Banco .xlsx com a aba “Propriedades da Madeira”. O dashboard compara as quatro propriedades destacadas em verde e preserva fontes, observações e condição de umidade." : "Planilha .xlsx com a aba “Espécies” (quatro ou oito colunas) e/ou “Especies.Completo”. As informações são reunidas pelo nome científico."}</p>
     <label className="sr-only" htmlFor={`file-${source.id}`}>{source.title}</label>
     <input id={`file-${source.id}`} ref={input} type="file" accept=".xlsx" hidden disabled={Boolean(busySource)}
       onChange={(event) => onImport(event, source.id)} />
@@ -39,7 +39,7 @@ export function ImportPage({ datasets, busySource, onImport, onClear, onNavigate
   return <>
     <div className="heading"><div><span className="eyebrow">PLANILHAS DA OPERAÇÃO</span><h1>Inserir dados</h1>
       <p>Insira a versão mais recente de cada planilha no campo correspondente.</p></div></div>
-    <p className="notice">Cada campo mantém uma base independente neste navegador. Importar ou limpar uma planilha preserva as outras duas. Os arquivos são lidos no seu dispositivo.</p>
+    <p className="notice">Cada campo mantém uma base independente neste navegador. Importar ou limpar uma planilha preserva as demais. Os arquivos são lidos no seu dispositivo.</p>
     <div className="import-grid">{SOURCES.map((source) => <ImportCard key={source.id} source={source} dataset={datasets[source.id]} busySource={busySource} onImport={onImport} onClear={onClear} onNavigate={onNavigate} />)}</div>
   </>;
 }

@@ -16,7 +16,7 @@ test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem envia
   await page.goto("./");
   await expect(page.getByText("Nenhuma planilha importada", { exact: true })).toBeVisible();
   await expect(page.locator("input[type=password]")).toHaveCount(0);
-  await expect(page.locator("nav button")).toHaveCount(5);
+  await expect(page.locator("nav button")).toHaveCount(6);
   await records(page).click();
   await upload(page, await filePayload());
   await expect(page.getByText("Planilha: controle.xlsx", { exact: true })).toBeVisible();

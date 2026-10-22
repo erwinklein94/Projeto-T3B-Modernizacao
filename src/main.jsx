@@ -19,6 +19,7 @@ import {
   ChevronRight,
   CalendarRange,
   Leaf,
+  FlaskConical,
   Menu,
 } from "lucide-react";
 import definitions from "./definitions.json";
@@ -27,6 +28,7 @@ import { importExcelFile } from "./import-excel.js";
 import { SOURCES, sourceById } from "./sources.mjs";
 import { ImportPage, SourceStatus } from "./import-page";
 import { WeeklyDashboard, TaxonomyDashboard } from "./supplement-dashboards";
+import { WoodDashboard } from "./wood-dashboard";
 import {
   emptyFilters,
   fields,
@@ -45,7 +47,7 @@ import { DashboardCharts, ReceiptSpecies } from "./charts";
 import { speciesNames } from "./species-reference.mjs";
 import { exportExcel, exportPDF } from "./exports";
 import "./style.css";
-const labels = { dashboard: "Dashboard", records: "Registros", insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title };
+const labels = { dashboard: "Dashboard", records: "Registros", insert: "Inserir dados", weekly: sourceById.weekly.title, taxonomy: sourceById.taxonomy.title, wood: sourceById.wood.title };
 function Button({ children, icon: Icon, ...p }) {
   return (
     <button {...p}>
@@ -391,6 +393,7 @@ function App() {
             [Rows3, "records"],
             [CalendarRange, "weekly"],
             [Leaf, "taxonomy"],
+            [FlaskConical, "wood"],
             [Upload, "insert"],
           ].map(([Icon, p]) => (
             <button
@@ -441,7 +444,7 @@ function App() {
                   if (document.fullscreenElement)
                     await document.exitFullscreen();
                   else {
-                    if (!["dashboard", "weekly", "taxonomy"].includes(page)) setPage("dashboard");
+                    if (!["dashboard", "weekly", "taxonomy", "wood"].includes(page)) setPage("dashboard");
                     await document.documentElement.requestFullscreen();
                   }
                 } catch (e) {
@@ -468,6 +471,7 @@ function App() {
           {page === "insert" && <ImportPage datasets={datasets} busySource={busySource} onImport={importFile} onClear={setRemoving} onNavigate={navigate} />}
           {page === "weekly" && <WeeklyDashboard key={`weekly:${datasets.weekly?.importedAt || "empty"}`} dataset={datasets.weekly} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "taxonomy" && <TaxonomyDashboard key={`taxonomy:${datasets.taxonomy?.importedAt || "empty"}`} dataset={datasets.taxonomy} dark={dark} onInsert={() => navigate("insert")} />}
+          {page === "wood" && <WoodDashboard key={`wood:${datasets.wood?.importedAt || "empty"}`} dataset={datasets.wood} dark={dark} onInsert={() => navigate("insert")} />}
           {page === "dashboard" && dashboard}
           {page === "records" && (
             <>

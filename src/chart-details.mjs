@@ -1,5 +1,5 @@
 // Uses only the aggregated data from the locally imported workbook.
-export function chartDetails(option) {
+export function chartDetails(option, { preserveMissing = false } = {}) {
   const series = option.series || [];
   const pie = series[0]?.type === "pie";
   const labels = pie
@@ -16,6 +16,7 @@ export function chartDetails(option) {
     label,
     values: series.map((s) => {
       const v = s.data[i];
+      if (preserveMissing && (v === null || v === undefined || (typeof v === "object" && v.value == null))) return null;
       return typeof v === "number" ? v : Number(v?.value || 0);
     }),
   }));

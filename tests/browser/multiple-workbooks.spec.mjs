@@ -18,7 +18,7 @@ test("Importa três bases independentes, filtra dashboards e substitui ou limpa 
   await upload(page, "weekly", weeklyFixture(), "semanal.xlsx");
   await upload(page, "taxonomy", taxonomyFixture(), "catalogo.xlsx");
   await upload(page, "operations", fixture(), "controle.xlsx");
-  await expect(page.locator(".import-card")).toHaveCount(3);
+  await expect(page.locator(".import-card")).toHaveCount(4);
   for (const source of ["weekly", "taxonomy"]) {
     await expect(page.getByRole("heading", { name: sourceById[source].title, exact: true })).toBeVisible();
   }

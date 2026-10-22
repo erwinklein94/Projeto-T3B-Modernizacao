@@ -59,13 +59,13 @@ function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
   }, [option, dark, decimals]);
   return <div ref={el} style={{ height }} role="img" aria-label={title} />;
 }
-export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", decimals = 2, controls, note = "Quantidades em unidades. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
+export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", decimals = 2, comparison = false, controls, note = "Quantidades em unidades. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
   const [detail, setDetail] = useState(null);
   const dialog = useRef();
   const opener = useRef();
   const expandButton = useRef();
   const headingId = useId();
-  const { columns, rows, totals } = chartDetails(option);
+  const { columns, rows, totals } = chartDetails(option, { preserveMissing: comparison });
   const selected = rows.find((r) => r.label === detail?.label);
   const visible = selected ? [selected] : rows;
   const expanded = {
@@ -116,14 +116,14 @@ export function Chart({ title, subtitle, option, height = 300, dark = false, fil
               <h3>{selected ? `Detalhes: ${selected.label}` : "Detalhamento completo"}</h3>
               {selected && <button onClick={() => open()}>Mostrar todas as categorias</button>}
             </div>
-            <p>Clique em uma barra ou fatia para consultar sua contribuição. Os totais abaixo respeitam os filtros do dashboard.</p>
-            <div className="chart-detail-metrics">
+            <p>{comparison ? "Clique em uma barra para consultar a propriedade da espécie. Valores sem dados não são convertidos em zero." : "Clique em uma barra ou fatia para consultar sua contribuição. Os totais abaixo respeitam os filtros do dashboard."}</p>
+            {!comparison && <div className="chart-detail-metrics">
               {columns.map((name, i) => <div key={`${name}-${i}`}><span>{name} · total do gráfico</span><strong>{fmt(totals[i], decimals)}</strong></div>)}
-            </div>
+            </div>}
             <div className="chart-detail-table">
               <table>
-                <thead><tr><th>Categoria</th>{columns.map((name, i) => <React.Fragment key={i}><th>{name} ({unit})</th><th>% do total de {name}</th></React.Fragment>)}</tr></thead>
-                <tbody>{visible.map((row) => <tr key={row.label}><th scope="row">{row.label}</th>{row.values.map((value, i) => <React.Fragment key={i}><td>{fmt(value, decimals)}</td><td>{totals[i] > 0 && value >= 0 ? `${fmt(value / totals[i] * 100, decimals)}%` : "—"}</td></React.Fragment>)}</tr>)}</tbody>
+                <thead><tr><th>Categoria</th>{columns.map((name, i) => <React.Fragment key={i}><th>{name} ({unit})</th>{!comparison && <th>% do total de {name}</th>}</React.Fragment>)}</tr></thead>
+                <tbody>{visible.map((row) => <tr key={row.label}><th scope="row">{row.label}</th>{row.values.map((value, i) => <React.Fragment key={i}><td>{value === null ? "Sem dado" : fmt(value, comparison ? 4 : decimals)}</td>{!comparison && <td>{totals[i] > 0 && value >= 0 ? `${fmt(value / totals[i] * 100, decimals)}%` : "—"}</td>}</React.Fragment>)}</tr>)}</tbody>
               </table>
               {!rows.length && <p>Não há dados para os filtros selecionados.</p>}
             </div>

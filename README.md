@@ -1,14 +1,14 @@
 # Projeto T3B · Modernização
 
-Leitor local de três planilhas, com página Inserir dados, Registros e três dashboards. Sem login, contas, perfis ou conexão com banco de dados.
+Leitor local de quatro planilhas, com página Inserir dados, Registros e quatro dashboards. Sem login, contas, perfis ou conexão com banco de dados.
 
 ## Usar
 
 1. Abra **Inserir dados** no menu lateral.
 2. No campo correspondente, selecione a planilha `.xlsx` mais atualizada, com as abas e colunas no padrão original.
-3. Consulte Registros e Dashboard para o controle de dormentes ou abra os dashboards **Controle Semanal Recebimentos por Fornecedor** e **Catálogo Taxonômico Espécies Jales**.
+3. Consulte Registros e Dashboard para o controle de dormentes ou abra os dashboards **Controle Semanal Recebimentos por Fornecedor**, **Catálogo Taxonômico Espécies Jales** e **Propriedades da Madeira**.
 
-A importação substitui integralmente apenas a base daquele campo, preservando as outras duas. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
+A importação substitui integralmente apenas a base daquele campo, preservando as demais. Não acrescenta linhas nem combina arquivos. Para atualizar um registro, altere o Excel, salve e importe novamente.
 
 Os dados são processados no dispositivo e persistidos somente no `localStorage` deste site, neste navegador. Recarregar a página mantém a última importação. Outro dispositivo, navegador ou perfil começa vazio. Abas abertas no mesmo navegador acompanham a substituição ou limpeza dos dados. O arquivo Excel não é enviado a nenhum servidor.
 
@@ -41,7 +41,11 @@ Quantidades e percentuais no dashboard operacional e no PDF são arredondados pa
 
 **Catálogo Taxonômico Espécies Jales:** aceita a aba `Espécies` resumida (nome científico, nome popular, família e gênero), completa (mais distribuição, nome aceito, outros nomes populares e observações) e/ou a aba `Especies.Completo`. Colunas são reconhecidas pelos nomes, em qualquer ordem; as quatro primeiras informações são obrigatórias e as demais são opcionais. Quando existem as duas abas, os registros são associados pelo nome científico, desconsiderando espaços nas extremidades, acentos e maiúsculas. Campos vazios do resumo são preenchidos com os detalhes; valores já preenchidos em `Espécies` prevalecem, com aviso em caso de conflito. Espécies presentes em apenas uma aba são incluídas; nomes duplicados dentro de uma aba impedem a combinação para evitar associação ambígua. O painel apresenta contagens por família e gênero e a consulta integral dos textos, com filtros e busca. A aba opcional `Fontes e notas` é preservada para consulta. Os agrupamentos refletem os registros importados, sem corrigir ou validar a nomenclatura taxonômica.
 
-Os nomes dos dois campos de importação são os mesmos dos respectivos dashboards. Cada base usa uma chave independente no `localStorage`. Nenhum arquivo real é incluído no código, nos testes ou na publicação.
+**Propriedades da Madeira:** quarto campo de importação e dashboard próprio para a aba `Propriedades da Madeira`. As colunas são reconhecidas pelo nome, em qualquer ordem. Nome científico, nome popular e as quatro propriedades dos cabeçalhos verdes são obrigatórios: densidade básica (kg/m³), MOR em madeira seca (MPa), MOE de flexão em madeira seca (MPa) e dureza Janka paralela (N). Também aceita os cabeçalhos curtos anteriores (`MOR 15% (MPa)`, `MOE flexão (MPa)` e `Dureza Janka (N)`). As demais propriedades, a fonte, as observações, a condição de umidade e a aba `Fontes e notas` são preservadas para consulta.
+
+O comparativo tem filtros gerais de busca, grupo e seleção de várias espécies, além de filtros de grupo e espécie dentro de cada gráfico. MOE e Janka têm ainda filtro de ressalva de umidade; registros cuja condição informa `só verde`, `provavelmente verde` ou `sem dado seco` recebem barras hachuradas nessas duas propriedades. Os valores são usados como informados na planilha, sem conversão de umidade ou unidades. Rótulos das barras são arredondados, mas a consulta e o detalhamento mantêm até quatro casas decimais. `S/D`, vazios e erros não viram zero; valores não numéricos e fórmulas sem resultado salvo geram avisos. O detalhamento dessas propriedades mostra valores individuais, sem somá-los ou calcular percentuais. Não há classificação ou recomendação de madeira para uso ferroviário.
+
+Os nomes dos campos de importação são os mesmos dos respectivos dashboards. Cada base usa uma chave independente no `localStorage`. Bases já salvas das três áreas anteriores continuam disponíveis. Nenhum arquivo real é incluído no código, nos testes ou na publicação.
 
 ## Desenvolvimento e publicação
 

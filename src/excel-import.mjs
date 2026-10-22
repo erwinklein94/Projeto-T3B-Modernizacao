@@ -1,6 +1,7 @@
 import definitions from "./definitions.json" with { type: "json" };
 import { norm, validDate } from "./domain.mjs";
 import { sourceById } from "./sources.mjs";
+import { WOOD_METRICS } from "./wood-domain.mjs";
 
 const optional = new Set(["madeiras", "semanal", "apuracoes"]);
 const numeric = {
@@ -114,7 +115,7 @@ export function parseWorkbook(workbook, fileName, importedAt = new Date().toISOS
   return { version: 1, fileName, importedAt, records, definitions: importedDefinitions, warnings, sheets };
 }
 
-function supplementColumns(sheet, headers, required = headers) {
+function supplementColumns(sheet, headers, required = headers, aliases = {}) {
   for (let row = 1; row <= Math.min(10, sheet.rowCount); row++) {
     const columns = new Map();
     sheet.getRow(row).eachCell((cell, index) => {
@@ -122,11 +123,12 @@ function supplementColumns(sheet, headers, required = headers) {
       if (!key) return;
       columns.set(key, [...(columns.get(key) || []), index]);
     });
-    if (!required.every((name) => columns.has(normalized(name)))) continue;
+    const positions = (name) => [name, ...(aliases[name] || [])].flatMap((key) => columns.get(normalized(key)) || []);
+    if (!required.every((name) => positions(name).length)) continue;
     for (const name of headers) {
-      if (columns.get(normalized(name))?.length > 1) throw Error(`A aba "${sheet.name}" tem o cabeçalho "${name}" duplicado. Identifique cada coluna uma única vez.`);
+      if (positions(name).length > 1) throw Error(`A aba "${sheet.name}" tem o cabeçalho "${name}" duplicado. Identifique cada coluna uma única vez.`);
     }
-    return { row, indices: headers.map((name) => columns.get(normalized(name))?.[0] ?? null) };
+    return { row, indices: headers.map((name) => positions(name)[0] ?? null) };
   }
   throw Error(`A aba "${sheet.name}" está fora do padrão. Confira as colunas obrigatórias: ${required.join(", ")}. A ordem das colunas pode variar.`);
 }
@@ -171,6 +173,35 @@ function mergeTaxonomy(primary, complete, headers, warnings) {
   return primary;
 }
 
+function woodRows(sheet, config, warnings) {
+  const aliases = {
+    [config.headers[5]]: ["MOR 15% (MPa)"],
+    [config.headers[6]]: ["MOE flexão (MPa)"],
+    [config.headers[8]]: ["Compressão 15% (MPa)"],
+    [config.headers[9]]: ["Dureza Janka (N)"],
+  };
+  const required = [config.headers[0], config.headers[1], ...WOOD_METRICS.map((metric) => config.headers[metric.column])];
+  const layout = supplementColumns(sheet, config.headers, required, aliases);
+  const records = [];
+  sheet.eachRow((row, n) => {
+    if (n <= layout.row) return;
+    const raw = layout.indices.map((column) => column === null ? null : row.getCell(column).value);
+    if (!raw.some((v) => !isFormula(v) && present(valueOf(v)))) return;
+    const cells = raw.map(valueOf);
+    if (!present(cells[0])) throw Error(`${sheet.name}, linha ${n}: preencha o nome científico.`);
+    for (let i = 0; i < cells.length; i++) {
+      if (i >= 2 && i <= 11) {
+        cells[i] = numberOf(cells[i]);
+        if (isFormula(raw[i]) && !present(cells[i])) warnings.push(`${sheet.name}, linha ${n}: "${config.headers[i]}" está sem resultado salvo. Recalcule e salve o Excel; esse valor não será representado como zero.`);
+        if (typeof cells[i] === "number" && (!Number.isFinite(cells[i]) || cells[i] < 0)) throw Error(`${sheet.name}, linha ${n}: "${config.headers[i]}" deve ser maior ou igual a zero.`);
+        if (typeof cells[i] === "string" && !/^(s\s*\/\s*d|n\s*\/\s*a|sem dados?|[—–-])$/.test(normalized(cells[i])) && cells[i].trim()) warnings.push(`${sheet.name}, linha ${n}: valor não numérico em "${config.headers[i]}" preservado para consulta e omitido do gráfico.`);
+      } else if (cells[i] !== null) cells[i] = String(cells[i]);
+    }
+    records.push({ id: `wood:${n}`, kind: "wood", cells, source_sheet: sheet.name, source_row: n });
+  });
+  return records;
+}
+
 export function parseSupplement(workbook, source, fileName, importedAt = new Date().toISOString()) {
   const config = sourceById[source];
   if (!config?.headers) throw Error("Tipo de planilha não reconhecido.");
@@ -206,11 +237,13 @@ export function parseSupplement(workbook, source, fileName, importedAt = new Dat
       }
       records.push({ id: `${source}:${n}`, kind: source, cells, source_sheet: sheet.name, source_row: n, ...period });
     });
+  } else if (source === "wood") {
+    records = woodRows(sheet, config, warnings);
   } else {
     records = taxonomyRows(sheet || complete, config);
     if (sheet && complete) records = mergeTaxonomy(records, taxonomyRows(complete, config), config.headers, warnings);
   }
-  if (source === "taxonomy") {
+  if (["taxonomy", "wood"].includes(source)) {
     const noteSheet = workbook.worksheets.find((s) => normalized(s.name) === "fontes e notas");
     if (noteSheet) {
       noteSheet.eachRow((row, n) => {

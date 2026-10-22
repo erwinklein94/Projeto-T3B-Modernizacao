@@ -71,3 +71,18 @@ export function splitTaxonomyFixture() {
   for (let n = 2; n <= complete.rowCount; n++) primary.addRow(complete.getRow(n).values.slice(1, 5));
   return workbook;
 }
+
+export function woodFixture() {
+  const workbook = new ExcelJS.Workbook();
+  const sheet = workbook.addWorksheet(sourceById.wood.sheet);
+  sheet.addRow(sourceById.wood.headers);
+  for (const column of [3, 6, 7, 10]) sheet.getCell(1, column).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF00B050" } };
+  sheet.addRow(["Corymbia exemplo", "Eucalipto A", 800, 900, 90, 123.45, 10000, 40, 55, 5000, 9000, 4500, "Fonte A", "Observação A", "MOE e Janka: SÓ VERDE na ficha (sem dado seco)."]);
+  sheet.addRow(["Eucalyptus exemplo", "Eucalipto B", 400, 500, 50, 70.25, 8000, 20, 35, 2500, null, null, "Fonte B", null, "MOE e Janka: provavelmente verde, a reconfirmar."]);
+  sheet.addRow(["Espécie exemplo A", "Madeira A", 650, 750, 70, 99.75, 12000, 35, 50, 6000, null, null, "Fonte A", "Observação de origem", "Seca = 12%. MOE e Janka em madeira seca."]);
+  sheet.addRow(["Espécie exemplo B", "Madeira B", "S/D", null, null, "S/D", null, null, null, "S/D", null, null, null, "Sem resultados nas fontes", "Sem dado."]);
+  const notes = workbook.addWorksheet("Fontes e notas");
+  notes.addRow(["Fonte", "Uso"]);
+  notes.addRow(["Fonte A", "Dados sintéticos para testes"]);
+  return workbook;
+}
