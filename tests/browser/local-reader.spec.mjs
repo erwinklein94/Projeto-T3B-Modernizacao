@@ -7,7 +7,7 @@ const upload = async (page, payload) => {
   await insert(page).click();
   await page.getByLabel("Controle Dormentes Volume Espécies Jales", { exact: true }).and(page.locator("input[type=file]")).setInputFiles(payload);
 };
-const received = (page) => page.locator(".kpi").filter({ hasText: "Recebidos" }).locator("strong");
+const received = (page) => page.locator(".kpi").filter({ hasText: "Entradas" }).locator("strong");
 
 test("Começa sem login, importa, filtra, recarrega, substitui e limpa sem enviar dados", async ({ page, context }) => {
   const external = [], errors = [];

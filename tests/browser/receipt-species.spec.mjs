@@ -21,8 +21,8 @@ test("Pizza, resumo e fornecedor acompanham a importação e os filtros, arredon
   await expect(summary.getByRole("row").filter({ hasText: "Guariúba" })).toContainText("29%");
   await expect(summary.locator("tfoot")).toContainText("15100%");
   await expect(page.getByText("Período: 20/06/2026 até 21/06/2026", { exact: true })).toBeVisible();
-  await expect(page.locator(".kpi").filter({ hasText: "Recebidos" }).locator("strong")).toHaveText("15");
-  await expect(page.locator(".kpi").filter({ hasText: "Saldo do período" })).toContainText("0,9491 m³");
+  await expect(page.locator(".kpi").filter({ hasText: "Entradas" }).locator("strong")).toHaveText("11");
+  await expect(page.locator(".kpi")).toHaveCount(2);
 
   await page.getByRole("button", { name: "Ampliar Participação por espécie", exact: true }).click();
   const detail = page.getByRole("dialog");

@@ -25,6 +25,7 @@ Abas opcionais: `Danif.`, `Recebimento Semanal` e `Propriedades da Madeira`. Aba
 - Datas do Excel são convertidas sem mudança de dia por fuso horário. Datas em texto não interpretáveis e quantidades fracionadas são preservadas.
 - Fórmulas usam os resultados armazenados no arquivo; o leitor não é um motor de cálculo do Excel. Recalcule e salve o arquivo no Excel antes de importar. Erros de células e fórmulas de quantidade/volume sem valor salvo geram avisos. Valores ausentes ou erros não são somados como números.
 - O saldo é calculado exclusivamente pelas entradas e saídas em Movimentacoes. Recebimentos, consumo, transferências e resumos não geram movimentações adicionais.
+- O topo do dashboard operacional e do PDF mostra somente os cards **Entradas** e **Saídas**. Eles respeitam os filtros e excluem movimentos cujo tipo ou classe de estoque identifica refugo, danificado ou inservível, além de tipos iniciados por Segregação. Campos vazios de classificação continuam incluídos; menções em observações livres não excluem registros. O histórico, os gráficos de movimentação e o saldo contábil preservam todas as movimentações para conferência.
 - Filtros de período excluem datas não interpretáveis. Saldo do período significa entradas menos saídas no intervalo. Sem data inicial, o saldo inclui todo o histórico importado.
 - Associação de fornecedor nas movimentações usa pátio, lote e espécie. Lotes ambíguos não são atribuídos automaticamente.
 - Apurações e resumos semanais são referências independentes e não são somados aos indicadores.

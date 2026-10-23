@@ -77,29 +77,25 @@ export async function exportPDF(summary, filters, names = new Map()) {
   };
   header("Visão geral de recebimentos e estoque");
   const metrics = [
-    ["Recebidos", summary.received],
-    ["Entradas", summary.incoming],
-    ["Saídas", summary.outgoing],
-    ["Saldo do período", summary.balance],
-    ["Volume de saldo (m³)", summary.volume],
-    ["Danificados pendentes", summary.damaged],
+    ["Entradas", summary.cardIncoming],
+    ["Saídas", summary.cardOutgoing],
   ];
   metrics.forEach(([label, value], i) => {
-    const x = 12 + (i % 3) * 92,
-      y = 61 + Math.floor(i / 3) * 45;
+    const x = 12 + i * 140,
+      y = 61;
     doc.setFillColor("#F2F5F6");
-    doc.roundedRect(x, y, 87, 37, 2, 2, "F");
+    doc.roundedRect(x, y, 133, 37, 2, 2, "F");
     doc.setTextColor("#526574");
     doc.setFontSize(10);
     doc.text(label, x + 7, y + 11);
     doc.setTextColor("#003865");
     doc.setFontSize(23);
-    doc.text(fmt(value, label.includes("m³") ? 4 : 0), x + 7, y + 27);
+    doc.text(fmtQuantity(value), x + 7, y + 27);
   });
   doc.setFontSize(9);
   doc.setTextColor("#526574");
   doc.text(
-    "Saldo = entradas menos saídas no período filtrado. Quantidades arredondadas na exibição; volumes mantêm as casas decimais.",
+    "Cards de entradas e saídas excluem refugo, danificados e inservíveis identificados pelo tipo ou classe de estoque.",
     12,
     163,
   );

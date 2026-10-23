@@ -6,6 +6,7 @@ import {
   emptyFilters,
   supplierIndex,
   recalculate,
+  isRejectedMovement,
   fmt,
   fmtQuantity,
 } from "../src/domain.mjs";
@@ -120,4 +121,32 @@ test("Nomes do catálogo prevalecem sobre propriedades e referência, sem invent
   assert.equal(names.get("dialium guianense"), "Guariúba");
   assert.equal(names.has("especie desconhecida"), false);
   assert.equal(speciesNames().get("qualea albiflora"), "Cambará");
+});
+
+test("Cards excluem refugo e segregação de danificados sem alterar o livro de movimentações", () => {
+  const damaged = { ...move, cells: [...move.cells] };
+  Object.assign(damaged.cells, { 1: "Segregação danificado - saída disponível", 6: 5.5, 7: 0, 15: "Danificado segregado" });
+  const rejected = { ...move, cells: [...move.cells] };
+  Object.assign(rejected.cells, { 1: "Consumo", 6: 0, 7: 3.5, 15: "REFUGO" });
+  const summary = summarize([receipt, move, damaged, rejected]);
+  assert.equal(summary.cardIncoming, 10.5);
+  assert.equal(summary.cardOutgoing, 2.25);
+  assert.equal(summary.incoming, 16);
+  assert.equal(summary.outgoing, 5.75);
+  assert.equal(summary.moves.length, 3);
+  assert.equal(summary.balance, 10.25);
+  assert.equal(summarize([move, damaged, rejected], { ...emptyFilters, start: "2026-06-21" }).cardIncoming, 0);
+});
+
+test("Classificação usa tipo e classe, sem excluir material por menções em observações livres", () => {
+  for (const classification of ["Refugo", "Refugos", "Danificados", "Danificado segregado", "Inservível", "Inservíveis"]) {
+    const row = { ...move, cells: [...move.cells] };
+    row.cells[15] = classification;
+    assert.equal(isRejectedMovement(row), true, classification);
+  }
+  const row = { ...move, cells: [...move.cells] };
+  row.cells[14] = "Recebimento conferido, sem refugo ou danificados";
+  assert.equal(isRejectedMovement(row), false);
+  row.cells[1] = "Entrada estoque danificado";
+  assert.equal(isRejectedMovement(row), true);
 });

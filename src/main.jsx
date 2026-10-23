@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
-  Rows3,
   ShieldCheck,
   Sun,
   Moon,
@@ -13,7 +12,6 @@ import {
   Search,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Package,
   AlertTriangle,
   TrainFront,
   ChevronRight,
@@ -379,26 +377,19 @@ function App() {
         <span className="status-dot" /> {filterDescription(filter)}
         <span>{summary.receipts.length} recebimentos</span>
       </div>
-      <div className="kpis">
+      <div className="kpis operation-kpis">
         {[
-          ["Recebidos", summary.received, "unidades · recebimentos", Package],
           [
             "Entradas",
-            summary.incoming,
-            "unidades · movimentações",
+            summary.cardIncoming,
+            "unidades · sem refugo ou danificados",
             ArrowDownToLine,
           ],
           [
             "Saídas",
-            summary.outgoing,
-            "unidades · movimentações",
+            summary.cardOutgoing,
+            "unidades · sem refugo ou danificados",
             ArrowUpFromLine,
-          ],
-          [
-            "Saldo do período",
-            summary.balance,
-            `${fmt(summary.volume, 4)} m³ · volume de saldo`,
-            Rows3,
           ],
         ].map(([label, value, caption, Icon], i) => (
           <article className={`kpi kpi-${i}`} key={label}>

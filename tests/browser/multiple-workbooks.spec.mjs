@@ -55,7 +55,7 @@ test("Importa três bases independentes, filtra dashboards e substitui ou limpa 
   await page.getByRole("button", { name: "Confirmar limpeza" }).click();
   await expect(metric(otherTab, "Recebidos no período")).toHaveText("0");
   await page.reload();
-  await expect(metric(page, "Recebidos")).toHaveText("11");
+  await expect(metric(page, "Entradas")).toHaveText("11");
   await nav(page, sourceById.taxonomy.title).click();
   await expect(metric(page, "Registros de espécies")).toHaveText("3");
   await nav(page, sourceById.weekly.title).click();
@@ -71,7 +71,7 @@ test("Dados anteriores permanecem na atualização e uma base corrompida não bl
   await upload(page, "taxonomy", taxonomyFixture(), "catalogo.xlsx");
   await page.evaluate(() => localStorage.setItem("t3b:excel:taxonomy:v1", "inválido"));
   await page.reload();
-  await expect(metric(page, "Recebidos")).toHaveText("11");
+  await expect(metric(page, "Entradas")).toHaveText("11");
   await expect(page.getByRole("alert")).toContainText(sourceById.taxonomy.title);
   await nav(page, sourceById.weekly.title).click();
   await expect(metric(page, "Recebidos no período")).toHaveText("15,75");

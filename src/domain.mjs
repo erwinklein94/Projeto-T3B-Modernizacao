@@ -100,6 +100,11 @@ export function matches(r, f, index = new Map()) {
     if (f[k] && norm(c[m[k]]) !== norm(f[k])) return false;
   return !f.search || norm(c.join(" ")).includes(norm(f.search));
 }
+export function isRejectedMovement(row) {
+  // Classificação e tipo são campos estruturados; observações livres não classificam material.
+  const rejected = /\b(refugos?|danificad[oa]s?|inservivel|inserviveis)\b/;
+  return rejected.test(norm(row.cells[15])) || rejected.test(norm(row.cells[1])) || /^segregacao\b/.test(norm(row.cells[1]));
+}
 export function summarize(records, filters = emptyFilters) {
   const idx = supplierIndex(records),
     selected = records.filter((r) => matches(r, filters, idx));
@@ -138,6 +143,7 @@ export function summarize(records, filters = emptyFilters) {
   });
   const incoming = moves.reduce((s, r) => s + num(r.cells[6]), 0),
     outgoing = moves.reduce((s, r) => s + num(r.cells[7]), 0);
+  const cardMoves = moves.filter((row) => !isRejectedMovement(row));
   return {
     receipts,
     moves,
@@ -150,6 +156,8 @@ export function summarize(records, filters = emptyFilters) {
     received: receipts.reduce((s, r) => s + num(r.cells[9]), 0),
     incoming,
     outgoing,
+    cardIncoming: cardMoves.reduce((total, row) => total + num(row.cells[6]), 0),
+    cardOutgoing: cardMoves.reduce((total, row) => total + num(row.cells[7]), 0),
     balance: incoming - outgoing,
     volume: moves.reduce((s, r) => s + num(r.cells[8]) - num(r.cells[9]), 0),
     damaged: damages.reduce(
