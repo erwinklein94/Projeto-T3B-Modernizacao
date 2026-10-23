@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useId } from "react";
 import * as echarts from "echarts";
 import { fmt, fmtQuantity, norm, validDate, dateText } from "./domain.mjs";
 import { chartDetails } from "./chart-details.mjs";
+import { stackTotalLabels } from "./stack-labels.mjs";
 export const palette = [
   "#003865",
   "#32A6E6",
@@ -34,7 +35,7 @@ function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
         valueFormatter: (v) => fmt(v, decimals),
         ...option.tooltip,
       },
-      ...Object.fromEntries(Object.entries(option).filter(([key]) => key !== "tooltip")),
+      ...Object.fromEntries(Object.entries(option).filter(([key]) => key !== "tooltip" && key !== "stackTotalLabels")),
       legend: { ...option.legend, textStyle: { color: ink } },
       ...(option.xAxis ? { xAxis: axisTheme(option.xAxis) } : {}),
       ...(option.yAxis ? { yAxis: axisTheme(option.yAxis) } : {}),
@@ -42,6 +43,14 @@ function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
         ? { ...s, label: { color: ink, textBorderWidth: 0, ...s.label } }
         : s),
     });
+    if (option.stackTotalLabels) {
+      const updateTotals = (selected = {}) => chart.setOption({
+        series: stackTotalLabels(option.series, selected, (value) => fmt(value, decimals))
+          .map((s) => ({ ...s, label: { ...s.label, color: ink } })),
+      });
+      updateTotals(option.legend?.selected);
+      chart.on("legendselectchanged", (event) => updateTotals(event.selected));
+    }
     chart.on("click", (event) => {
       if (event.componentType === "series") select.current?.(
         option.series[event.seriesIndex]?.stack ? `${event.name} · ${event.seriesName}` : event.name,

@@ -47,6 +47,7 @@ export function WeeklyDashboard({ dataset, dark, onInsert }) {
     <div className="charts-grid">
       <div className="wide"><Chart title="Recebimentos por semana e fornecedor" subtitle="Quantidade semanal por fornecedor · unidades" dark={dark} filterText={context} note={weeklyNote} height={380}
         option={{ ...bar(summary.rows.map((r) => r.cells[0]), summary.providers.map((p) => ({ name: p.name, stack: "semanal", data: summary.rows.map((r) => num(r.cells[p.index])) }))),
+          stackTotalLabels: true, yAxis: { type: "value", max: ({ max }) => max > 0 ? max * 1.15 : 1, splitLine: { lineStyle: { color: "#bdccd433" } } },
           dataZoom: summary.rows.length > 12 ? [{ type: "slider", bottom: 0, start: 0, end: 12 / summary.rows.length * 100 }] : [], grid: { left: 65, right: 25, top: 45, bottom: 115 } }} /></div>
       <Chart title="Total por fornecedor" subtitle="Soma das semanas selecionadas · unidades" dark={dark} filterText={context} note={weeklyNote}
         option={bar(summary.totals.map((p) => p.name), [{ name: "Recebidos", data: summary.totals.map((p) => p.value) }])} />
