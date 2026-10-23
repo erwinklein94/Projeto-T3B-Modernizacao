@@ -423,6 +423,7 @@ main {
   grid-template-columns: repeat(4, 1fr);
   gap: 18px;
 }
+.kpis-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .kpi {
   background: var(--panel);
   border: 1px solid var(--line);

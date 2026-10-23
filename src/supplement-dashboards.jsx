@@ -14,7 +14,7 @@ function Empty({ onInsert }) {
     <button onClick={onInsert}><Upload size={16} />Ir para Inserir dados</button></div>;
 }
 function Metrics({ items }) {
-  return <div className="kpis">{items.map(([label, value, detail], i) => <article className={`kpi kpi-${i}`} key={label}><div>{label}</div><strong>{fmt(value)}</strong><small>{detail}</small></article>)}</div>;
+  return <div className={`kpis${items.length === 3 ? " kpis-three" : ""}`}>{items.map(([label, value, detail], i) => <article className={`kpi kpi-${i}`} key={label}><div>{label}</div><strong>{fmt(value)}</strong><small>{detail}</small></article>)}</div>;
 }
 function Select({ label, value, onChange, options, all = "Todos" }) {
   return <label>{label}<select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}><option value="">{all}</option>{options.map((option) => <option key={option}>{option}</option>)}</select></label>;
@@ -43,7 +43,7 @@ export function WeeklyDashboard({ dataset, dark, onInsert }) {
       </div>
     </div>
     <div className="period">{context}</div>
-    <Metrics items={[["Recebidos no período", summary.total, "unidades · controle semanal"], ["Semanas", summary.rows.length, "semanas no filtro"], ["Fornecedores com recebimento", summary.totals.filter((p) => p.value > 0).length, "fornecedores no filtro"], ["Semanas com recebimento", summary.activeWeeks, "semanas com quantidade positiva"]]} />
+    <Metrics items={[["Recebidos no período", summary.total, "unidades · controle semanal"], ["Semanas", summary.rows.length, "semanas no filtro"], ["Fornecedores com recebimento", summary.totals.filter((p) => p.value > 0).length, "fornecedores no filtro"]]} />
     <div className="charts-grid">
       <div className="wide"><Chart title="Recebimentos por semana e fornecedor" subtitle="Quantidade semanal por fornecedor · unidades" dark={dark} filterText={context} note={weeklyNote} height={380}
         option={{ ...bar(summary.rows.map((r) => r.cells[0]), summary.providers.map((p) => ({ name: p.name, stack: "semanal", data: summary.rows.map((r) => num(r.cells[p.index])) }))),
