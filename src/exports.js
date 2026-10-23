@@ -45,7 +45,7 @@ function download(data, name, type) {
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
-export async function exportPDF(summary, filters, names = new Map()) {
+export async function exportPDF(summary, filters, names = new Map(), snapshots) {
   const [{ jsPDF }, echarts] = await Promise.all([
     import("jspdf"),
     import("echarts"),
@@ -159,12 +159,20 @@ export async function exportPDF(summary, filters, names = new Map()) {
       ]),
     ],
   ];
-  for (const [title, columns, rows] of tables) {
+  if (snapshots?.available && snapshots.rows.length) {
+    for (let start = 0; start < snapshots.columns.length; start += 4) {
+      const columns = snapshots.columns.slice(start, start + 4);
+      const values = snapshots.rows.map((row) => [String(row.cells[0]), ...columns.map(({ index }) => typeof row.cells[index] === "number" ? fmtQuantity(row.cells[index]) : row.cells[index] == null || row.cells[index] === "" ? "—" : String(row.cells[index]))]);
+      values.push(["TOTAL", ...snapshots.totals.slice(start, start + 4).map(({ value, partial }) => value === null ? "—" : `${fmtQuantity(value)}${partial ? " (parcial)" : ""}`)]);
+      tables.push(["Apurações de danificados por fornecedor / origem", ["Danificados", ...columns.map((column) => dateText(column.label))], values, [105, ...columns.map(() => 168 / columns.length)]]);
+    }
+  }
+  for (const [title, columns, rows, customWidths] of tables) {
     for (let start = 0; start < Math.max(1, rows.length); start += 14) {
       doc.addPage();
       header(title);
       let y = 57;
-      const widths = columns.length === 2 ? [200, 73] : columns.length === 4 ? [68, 121, 48, 36] : [99, 51, 41, 41, 41];
+      const widths = customWidths || (columns.length === 2 ? [200, 73] : columns.length === 4 ? [68, 121, 48, 36] : [99, 51, 41, 41, 41]);
       const positions = widths.map(
         (_, i) => 12 + widths.slice(0, i).reduce((a, b) => a + b, 0),
       );

@@ -26,6 +26,20 @@
 .supplement-table { margin-top: 24px; }
 .kpis.operation-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .records-section { margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--line); scroll-margin-top: 24px; }
+.lower-grid.damage-section { grid-template-columns: minmax(0, 1fr); }
+.damage-panel { min-width: 0; }
+.damage-matrix { margin-top: 18px; }
+.damage-matrix caption { text-align: left; padding: 0 22px 14px; color: var(--muted); font-size: 11px; }
+.damage-matrix thead th, .damage-matrix tfoot th, .damage-matrix tfoot td { background: #003865; color: #fff; }
+.damage-matrix th, .damage-matrix td { padding: 9px 16px; min-width: 110px; text-align: right; }
+.damage-matrix th:first-child { text-align: left; min-width: 200px; }
+.damage-matrix tbody th { color: var(--ink); font-weight: normal; }
+.damage-matrix tbody tr:nth-child(odd) { background: var(--bg); }
+.damage-matrix tbody tr:nth-child(even) th { background: var(--panel); }
+.damage-matrix tfoot { font-weight: bold; }
+.damage-note { padding: 0 22px; line-height: 1.7; }
+.damage-occurrences { margin: 18px 22px; font-size: 12px; }
+.damage-occurrences summary { cursor: pointer; font-weight: bold; }
 .wood-chart-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .wood-chart-filters label { min-width: 0; font-size: 10px; }
 .wood-chart-filters select { width: 100%; min-width: 0; font-size: 11px; }

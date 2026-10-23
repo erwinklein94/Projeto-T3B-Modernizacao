@@ -29,6 +29,7 @@ Abas opcionais: `Danif.`, `Recebimento Semanal` e `Propriedades da Madeira`. Aba
 - Filtros de período excluem datas não interpretáveis. Saldo do período significa entradas menos saídas no intervalo. Sem data inicial, o saldo inclui todo o histórico importado.
 - Associação de fornecedor nas movimentações usa pátio, lote e espécie. Lotes ambíguos não são atribuídos automaticamente.
 - Apurações e resumos semanais são referências independentes e não são somados aos indicadores.
+- **Danificados e pendências** mostra a aba `Danif.` em matriz: fornecedores/origens nas linhas e datas nas colunas, com cabeçalho e linha TOTAL em azul. Os totais são recalculados por coluna, sem incluir a linha TOTAL do Excel ou somar datas distintas. Campos vazios aparecem como `—`; totais com valores ausentes são indicados como parciais. O filtro de fornecedor seleciona a origem exatamente como cadastrada, e o período seleciona as datas das apurações. Espécie e pátio não se aplicam a esse resumo. Novas datas são reconhecidas na próxima importação. As ocorrências da aba `Danificados` continuam disponíveis em uma seção expansível; sem `Danif.`, elas permanecem como a visualização principal. O PDF também inclui a matriz, dividindo datas em grupos de até quatro colunas.
 
 Exportações de consulta para Excel e PDF, detalhes dos gráficos, apresentação e temas continuam disponíveis.
 

@@ -98,7 +98,7 @@ export function parseWorkbook(workbook, fileName, importedAt = new Date().toISOS
       if (!raw.some((v) => !isFormula(v) && present(valueOf(v)))) { ignored++; return; }
       const cells = raw.map(valueOf);
       if (def.id === "recebimentos" && ![0, 1, 3, 4, 6, 7, 8, 9, 10].some((i) => present(cells[i]))) { ignored++; return; }
-      if (["semanal", "apuracoes"].includes(def.id) && normalized(cells[0]) === "total") { ignored++; return; }
+      if (["semanal", "apuracoes"].includes(def.id) && totalRow(cells[0])) { ignored++; return; }
       for (let i = 0; i < cols; i++) {
         if (def.dates.includes(i)) cells[i] = dateOf(cells[i], workbook.properties.date1904);
         else if (numericColumns.includes(i)) cells[i] = numberOf(cells[i]);

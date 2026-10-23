@@ -12,7 +12,6 @@ import {
   Search,
   ArrowDownToLine,
   ArrowUpFromLine,
-  AlertTriangle,
   TrainFront,
   ChevronRight,
   CalendarRange,
@@ -27,6 +26,8 @@ import { SOURCES, sourceById } from "./sources.mjs";
 import { ImportPage, SourceStatus } from "./import-page";
 import { WeeklyDashboard, TaxonomyDashboard } from "./supplement-dashboards";
 import { WoodDashboard } from "./wood-dashboard";
+import { DamagePanel } from "./damage-panel";
+import { damageSnapshots } from "./damage-snapshots.mjs";
 import {
   emptyFilters,
   fields,
@@ -34,7 +35,6 @@ import {
   fmtQuantity,
   dateText,
   norm,
-  num,
   matches,
   supplierIndex,
   supplierOf,
@@ -121,7 +121,7 @@ function Filters({ value: f, onChange, records, kind, dashboard = false }) {
                   status: "Status",
                 }[key]
               }
-              <select value={f[key]} onChange={(e) => set(key, e.target.value)}>
+              <select aria-label={{ supplier: "Fornecedor", species: "Espécie", yard: "Pátio", status: "Status" }[key]} value={f[key]} onChange={(e) => set(key, e.target.value)}>
                 <option value="">Todos</option>
                 {options(key).map((v) => (
                   <option key={v}>{v}</option>
@@ -360,7 +360,7 @@ function App() {
           disabled={exporting || loading || !dataset}
           onClick={() =>
             runExport(async () => {
-              await exportPDF(summary, filter, names);
+              await exportPDF(summary, filter, names, damageSnapshots(records, defById.apuracoes, filter));
             })
           }
         >
@@ -416,43 +416,8 @@ function App() {
         focusSupplier={focusSupplier}
         onFocusSupplier={setFocusSupplier}
       />
-      <div className="lower-grid">
-        <article className="panel">
-          <div className="panel-heading">
-            <h3>Danificados e pendências</h3>
-            <p>Ocorrências no período selecionado</p>
-          </div>
-          <div className="damage-total">
-            <AlertTriangle size={25} />
-            <strong>{fmtQuantity(summary.damaged)}</strong>
-            <span>unidades pendentes</span>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Fornecedor / origem</th>
-                  <th>Identificação</th>
-                  <th>Quantidade</th>
-                  <th>Pendente</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summary.damages.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.cells[6] || "Não identificado"}</td>
-                    <td>{dateText(r.cells[1])}</td>
-                    <td>{fmtQuantity(r.cells[9])}</td>
-                    <td>{fmtQuantity(num(r.cells[9]) - num(r.cells[15]))}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!summary.damages.length && (
-            <p className="empty">Nenhuma ocorrência neste filtro.</p>
-          )}
-        </article>
+      <div className="lower-grid damage-section">
+        <DamagePanel records={records} definition={defById.apuracoes} filters={filter} summary={summary} />
         <article className="panel">
           <div className="panel-heading">
             <h3>Conferência do histórico</h3>
@@ -623,14 +588,14 @@ function HistoricalTables({ records, filters, defById }) {
   );
   return (
     <details className="panel history-details">
-      <summary>Apurações históricas e controle semanal original</summary>
+      <summary>Controle semanal original</summary>
       <p className="footnote">
         Fotografias de apuração preservadas do Excel. Estes quadros são
         referências históricas independentes e não são somados aos indicadores.{" "}
         {filtered &&
           "Filtros de período, espécie e pátio não se aplicam a estes resumos."}
       </p>
-      {["apuracoes", "semanal"].map((k) => (
+      {["semanal"].map((k) => (
         <div key={k}>
           <h3>{defById[k].name}</h3>
           <div className="table-wrap">
