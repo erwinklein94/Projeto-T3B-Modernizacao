@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Search, Upload } from "lucide-react";
-import { Chart } from "./charts";
+import { Chart, ChartCanvas } from "./charts";
 import { fmt } from "./domain.mjs";
 import { SourceStatus } from "./import-page";
 import { sourceById } from "./sources.mjs";
@@ -14,7 +14,72 @@ function Select({ label, value, onChange, options }) {
   return <label>{label}<select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)}>{options.map(([value, name]) => <option key={value} value={value}>{name}</option>)}</select></label>;
 }
 
+function propertyOption(metric, plotted, allRows, dark) {
+  return { legend: { show: false }, grid: { left: 72, right: 25, top: 28, bottom: 150 },
+        xAxis: { type: "category", data: plotted.map((row) => `${row.cells[1] || row.cells[0]}\n(${row.cells[0]})`), axisLabel: { interval: 0, rotate: plotted.length > 5 ? 35 : 0, fontSize: 9, width: 105, overflow: "break" } },
+        yAxis: { type: "value", name: metric.unit, splitLine: { lineStyle: { color: "#bdccd433" } } },
+        dataZoom: plotted.length > 8 ? [{ type: "slider", bottom: 0, start: 0, end: 8 / plotted.length * 100 }] : [],
+        series: [{ name: metric.title, type: "bar", barMaxWidth: 48,
+          label: { show: true, position: "top", color: dark ? "#dce8ee" : "#003865", fontSize: 10, fontWeight: "bold", formatter: ({ value }) => value === null ? "" : fmt(value, 0) },
+          data: plotted.map((row) => ({ value: woodValue(row, metric), itemStyle: { color: colors[allRows.findIndex((r) => r.id === row.id) % colors.length], ...(woodCaveat(row, metric) ? { decal: { symbol: "rect", symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [2, 4], rotation: -Math.PI / 4, color: "rgba(255,255,255,0.75)" } } : {}) } })) }] };
+}
+
+function PropertyComparison({ metric, allRows, initialRows, dark, onClose }) {
+  const dialog = useRef();
+  const headingId = useId();
+  const [selected, setSelected] = useState(() => initialRows.map((row) => row.id));
+  const plotted = allRows.filter((row) => selected.includes(row.id));
+  useEffect(() => {
+    const opener = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    dialog.current.showModal();
+    return () => {
+      document.body.style.overflow = overflow;
+      if (opener instanceof HTMLElement) opener.focus();
+    };
+  }, []);
+  const option = propertyOption(metric, plotted, allRows, dark);
+  const comparisonOption = {
+    ...option,
+    grid: { left: 145, right: 60, top: 35, bottom: 35 },
+    xAxis: { ...option.yAxis, splitNumber: 3, axisLabel: { hideOverlap: true } },
+    yAxis: { type: "category", inverse: true, data: option.xAxis.data, axisLabel: { interval: 0, fontSize: 10, width: 130, overflow: "break" } },
+    dataZoom: [],
+    series: option.series.map((series) => ({ ...series, label: { ...series.label, position: "right" } })),
+  };
+  return <dialog ref={dialog} className="chart-dialog wood-comparison-dialog" aria-labelledby={headingId}
+    onCancel={onClose} onClose={onClose} onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <div className="chart-detail-content">
+      <header className="chart-detail-header">
+        <div><h2 id={headingId}>Comparar — {metric.title}</h2><p>Selecione quantos itens quiser. O gráfico é atualizado a cada seleção.</p></div>
+        <button autoFocus onClick={onClose} aria-label="Fechar comparação">Fechar ✕</button>
+      </header>
+      <p>Todos os registros importados estão disponíveis aqui. A seleção desta comparação é independente dos filtros do dashboard.</p>
+      <div className="wood-species-picker">
+        <div className="actions"><button onClick={() => setSelected(allRows.map((row) => row.id))}>Selecionar todos</button><button onClick={() => setSelected([])}>Desmarcar todos</button></div>
+        <fieldset><legend>Itens para comparar — {metric.title}</legend>
+          {allRows.map((row) => <label key={row.id}>
+            <input type="checkbox" checked={selected.includes(row.id)} onChange={() => setSelected((current) => current.includes(row.id) ? current.filter((id) => id !== row.id) : [...current, row.id])} />
+            <span>{row.cells[1] || row.cells[0]}<small>{row.cells[0]}</small>{woodValue(row, metric) === null && <small>Sem dado em {metric.unit}</small>}{woodCaveat(row, metric) && <small>Ressalva: {woodCaveat(row, metric)}</small>}</span>
+          </label>)}
+        </fieldset>
+      </div>
+      <p role="status">{plotted.length} de {allRows.length} itens selecionados</p>
+      {!allRows.length ? <p className="empty">Importe uma planilha de propriedades da madeira para comparar os itens.</p> : !plotted.length ? <p className="empty">Selecione os itens que deseja comparar.</p> : <>
+        <div className="wood-comparison-plot"><ChartCanvas title={'Comparação — ' + metric.title} option={comparisonOption} height={Math.max(280, plotted.length * 58 + 70)} dark={dark} decimals={0} /></div>
+        <div className="chart-detail-table"><table>
+          <thead><tr><th>Item</th><th>{metric.title} ({metric.unit})</th><th>Ressalva de umidade</th></tr></thead>
+          <tbody>{plotted.map((row) => <tr key={row.id}><th scope="row">{row.cells[1] || row.cells[0]} ({row.cells[0]})</th><td>{woodValue(row, metric) === null ? "Sem dado" : fmt(woodValue(row, metric), 4)}</td><td>{woodCaveat(row, metric) || "—"}</td></tr>)}</tbody>
+        </table></div>
+      </>}
+      <p className="chart-detail-note">{note} Registros sem dado não têm barra e não são convertidos em zero.</p>
+    </div>
+  </dialog>;
+}
+
 function PropertyChart({ metric, rows, allRows, dark, context }) {
+  const [comparing, setComparing] = useState(false);
   const [species, setSpecies] = useState(""), [group, setGroup] = useState(""), [condition, setCondition] = useState("");
   const available = filterWood(rows, { group });
   const options = [...new Map(available.map((row) => [row.cells[0], [row.cells[0], `${row.cells[1] || row.cells[0]} (${row.cells[0]})`]])).values()];
@@ -24,20 +89,15 @@ function PropertyChart({ metric, rows, allRows, dark, context }) {
   const flagged = plotted.filter((row) => woodValue(row, metric) !== null && woodCaveat(row, metric));
   const filterText = [context, groupOptions.find(([id]) => id === group)?.[1], chosen, condition === "flagged" ? "Com ressalva de umidade" : condition === "clear" ? "Sem ressalva de umidade" : ""].filter(Boolean).join(" · ");
   return <div className="wood-property-card">
-    <Chart title={metric.title} subtitle={`${metric.unit} · ${plotted.length - missing.length} de ${plotted.length} registros com valor`} unit={metric.unit} decimals={0} comparison dark={dark} filterText={filterText} note={note} height={400}
+    <Chart title={metric.title} subtitle={`${metric.unit} · ${plotted.length - missing.length} de ${plotted.length} registros com valor`} unit={metric.unit} decimals={0} comparison onCompare={() => setComparing(true)} dark={dark} filterText={filterText} note={note} height={400}
       controls={<div className="wood-chart-filters">
         <Select label={`Grupo — ${metric.title}`} value={group} onChange={setGroup} options={groupOptions} />
         <Select label={`Espécie — ${metric.title}`} value={chosen} onChange={setSpecies} options={[["", "Todas as espécies"], ...options]} />
         {["moe", "janka"].includes(metric.id) && <Select label={`Umidade — ${metric.title}`} value={condition} onChange={setCondition} options={[["", "Todos os registros"], ["clear", "Sem ressalva de umidade"], ["flagged", "Com ressalva de umidade"]]} />}
         {(group || species || condition) && <button className="text-button" onClick={() => { setGroup(""); setSpecies(""); setCondition(""); }}>Limpar este gráfico</button>}
       </div>}
-      option={{ legend: { show: false }, grid: { left: 72, right: 25, top: 28, bottom: 150 },
-        xAxis: { type: "category", data: plotted.map((row) => `${row.cells[1] || row.cells[0]}\n(${row.cells[0]})`), axisLabel: { interval: 0, rotate: plotted.length > 5 ? 35 : 0, fontSize: 9, width: 105, overflow: "break" } },
-        yAxis: { type: "value", name: metric.unit, splitLine: { lineStyle: { color: "#bdccd433" } } },
-        dataZoom: plotted.length > 8 ? [{ type: "slider", bottom: 0, start: 0, end: 8 / plotted.length * 100 }] : [],
-        series: [{ name: metric.title, type: "bar", barMaxWidth: 48,
-          label: { show: true, position: "top", color: dark ? "#dce8ee" : "#003865", fontSize: 10, fontWeight: "bold", formatter: ({ value }) => value === null ? "" : fmt(value, 0) },
-          data: plotted.map((row) => ({ value: woodValue(row, metric), itemStyle: { color: colors[allRows.findIndex((r) => r.id === row.id) % colors.length], ...(woodCaveat(row, metric) ? { decal: { symbol: "rect", symbolSize: 1, dashArrayX: [1, 0], dashArrayY: [2, 4], rotation: -Math.PI / 4, color: "rgba(255,255,255,0.75)" } } : {}) } })) }] }} />
+      option={propertyOption(metric, plotted, allRows, dark)} />
+    {comparing && <PropertyComparison metric={metric} allRows={allRows} initialRows={plotted} dark={dark} onClose={() => setComparing(false)} />}
     <div className="wood-chart-notes">
       {!plotted.length && <p className="empty">Nenhuma espécie corresponde aos filtros deste gráfico.</p>}
       {missing.length > 0 && <p>Sem dado em {metric.unit}: {missing.map((row) => row.cells[1] || row.cells[0]).join(", ")}. Esses registros não têm barra.</p>}

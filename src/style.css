@@ -956,3 +956,8 @@ tr:hover td {
     font-size: 11px;
   }
 }
+
+.chart-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.wood-comparison-dialog fieldset { max-height: 260px; overflow-y: auto; }
+.wood-comparison-plot { max-height: 540px; overflow-y: auto; }
+.wood-comparison-dialog .chart-detail-table td:last-child { white-space: normal; min-width: 120px; }

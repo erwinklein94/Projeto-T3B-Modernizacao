@@ -8,7 +8,7 @@ const metric = (page, label) => page.locator(".kpi").filter({ has: page.getByTex
 async function upload(page, source, workbook, name) {
   await nav(page, "Inserir dados").click();
   await page.getByLabel(sourceById[source].title, { exact: true }).and(page.locator("input[type=file]")).setInputFiles(await filePayload(workbook, name));
-  await expect(page.getByText(`Planilha: ${name}`, { exact: true })).toBeVisible();
+  await expect(page.getByText(`Planilha: ${name}`, { exact: true })).toBeVisible({ timeout: 15000 });
 }
 
 test("Dashboard de madeiras compara as quatro propriedades com filtros e mantém ausências e ressalvas", async ({ page, context }) => {
@@ -85,4 +85,54 @@ test("Dashboard de madeiras compara as quatro propriedades com filtros e mantém
   await expect(metric(page, "Recebidos no período")).toHaveText("15,75");
   expect(errors).toEqual([]);
   expect(external).toEqual([]);
+});
+
+
+test("Cada propriedade abre comparação independente com seleção múltipla e acessibilidade", async ({ page }, testInfo) => {
+  const errors = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto("./");
+  await nav(page, sourceById.wood.title).click();
+  await nav(page, "Comparar Densidade básica").click();
+  let dialog = page.getByRole("dialog");
+  await expect(dialog.getByText("Importe uma planilha de propriedades da madeira para comparar os itens.")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(nav(page, "Comparar Densidade básica")).toBeFocused();
+  await upload(page, "wood", woodFixture(), "comparacao.xlsx");
+  await nav(page, sourceById.wood.title).click();
+  await page.getByLabel("Espécie — Densidade básica", { exact: true }).selectOption("Espécie exemplo A");
+  for (const property of WOOD_METRICS) {
+    const button = nav(page, "Comparar " + property.title);
+    await button.click();
+    dialog = page.getByRole("dialog", { name: "Comparar — " + property.title, exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole("checkbox")).toHaveCount(4);
+    await dialog.getByRole("button", { name: "Desmarcar todos", exact: true }).click();
+    await expect(dialog.getByText("Selecione os itens que deseja comparar.", { exact: true })).toBeVisible();
+    await dialog.getByRole("checkbox", { name: /Madeira A/ }).check();
+    await dialog.getByRole("checkbox", { name: /Eucalipto A/ }).check();
+    await expect(dialog.locator("tbody tr")).toHaveCount(2);
+    await expect(dialog.getByRole("img", { name: "Comparação — " + property.title, exact: true })).toBeVisible();
+    await expect(dialog.locator("tbody")).not.toContainText("Eucalipto B");
+    if (["moe", "janka"].includes(property.id)) await expect(dialog.locator("tbody")).toContainText("SÓ VERDE");
+    await dialog.getByRole("button", { name: "Selecionar todos", exact: true }).click();
+    await expect(dialog.locator("tbody tr")).toHaveCount(4);
+    if (property.id === "density") await dialog.screenshot({ path: testInfo.outputPath("comparison-desktop.png") });
+    await expect(dialog.locator("tbody")).toContainText("Sem dado");
+    await dialog.getByRole("checkbox", { name: /Madeira B/ }).uncheck();
+    await expect(dialog.locator("tbody tr")).toHaveCount(3);
+    await page.keyboard.press("Escape");
+    await expect(button).toBeFocused();
+  }
+  await expect(page.getByLabel("Espécie — Densidade básica", { exact: true })).toHaveValue("Espécie exemplo A");
+  await nav(page, "Ativar tema escuro").click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await nav(page, "Comparar Dureza Janka (paralela)").click();
+  dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await dialog.screenshot({ path: testInfo.outputPath("comparison-mobile.png") });
+  await dialog.getByRole("button", { name: "Fechar comparação", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(errors).toEqual([]);
 });

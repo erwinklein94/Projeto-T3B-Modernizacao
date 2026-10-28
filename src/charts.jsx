@@ -13,7 +13,7 @@ export const palette = [
   "#BDCCD4",
   "#FBD300",
 ];
-function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
+export function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
   const el = useRef();
   const select = useRef(onSelect);
   select.current = onSelect;
@@ -68,7 +68,7 @@ function ChartCanvas({ title, option, height, dark, onSelect, decimals }) {
   }, [option, dark, decimals]);
   return <div ref={el} style={{ height }} role="img" aria-label={title} />;
 }
-export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", decimals = 2, comparison = false, controls, note = "Quantidades em unidades. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
+export function Chart({ title, subtitle, option, height = 300, dark = false, filterText, unit = "un.", decimals = 2, comparison = false, controls, onCompare, note = "Quantidades em unidades. Saldo representa entradas menos saídas do período; percentuais não são calculados para valores negativos ou totais não positivos." }) {
   const [detail, setDetail] = useState(null);
   const dialog = useRef();
   const opener = useRef();
@@ -102,9 +102,12 @@ export function Chart({ title, subtitle, option, height = 300, dark = false, fil
       <div className="panel-heading">
         <h3>{title}</h3>
         <p>{subtitle}</p>
-        <button ref={expandButton} className="chart-expand" onClick={() => open()} aria-label={`Ampliar ${title}`}>
-          Ampliar e detalhar ↗
-        </button>
+        <div className="chart-actions">
+          <button ref={expandButton} className="chart-expand" onClick={() => open()} aria-label={`Ampliar ${title}`}>
+            Ampliar e detalhar ↗
+          </button>
+          {onCompare && <button className="chart-expand" onClick={onCompare} aria-label={`Comparar ${title}`}>Comparar</button>}
+        </div>
       </div>
       {controls && <div className="chart-controls">{controls}</div>}
       <ChartCanvas title={title} option={option} height={height} dark={dark} decimals={decimals} onSelect={open} />
